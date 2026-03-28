@@ -228,8 +228,11 @@
       }
 
       /* Verberg drag-gerelateerde elementen op mobiel */
-      [draggable="true"] { -webkit-user-drag: none; cursor: default; }
+      [draggable="true"] { -webkit-user-drag: none; }
       .drop-zone-active { display: none; }
+
+      /* iOS Safari: cursor:pointer nodig voor click-delegatie op niet-native elementen */
+      [data-action] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
       /* Footer: ruimte voor tab-balk */
       .footer { padding-bottom: 60px; }
