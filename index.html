@@ -256,7 +256,7 @@
       <div id="login-error"></div>
     </div>
     <!-- Setup-modus (als nog geen wachtwoord is ingesteld) -->
-    <div id="setup-mode" style="display:none">
+    <div id="setup-mode" style="display:none;flex-direction:column;align-items:center">
       <div class="login-setup-msg">Geen wachtwoord ingesteld. Kies een wachtwoord om de app te beveiligen.</div>
       <input type="password" id="setup-pw1" placeholder="Nieuw wachtwoord" style="margin-bottom:6px">
       <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
@@ -466,7 +466,7 @@ KB.checkSetup = async function() {
     if (!snap.val()) {
       // Geen wachtwoord → toon setup-modus
       document.getElementById('login-mode').style.display = 'none';
-      document.getElementById('setup-mode').style.display = '';
+      document.getElementById('setup-mode').style.display = 'flex';
       document.getElementById('setup-pw1').focus();
     }
   } catch(e) {
@@ -475,12 +475,15 @@ KB.checkSetup = async function() {
 };
 
 KB.handleSetup = async function() {
-  const pw1 = document.getElementById('setup-pw1').value;
-  const pw2 = document.getElementById('setup-pw2').value;
+  const pw1 = document.getElementById('setup-pw1').value.trim();
+  const pw2 = document.getElementById('setup-pw2').value.trim();
   const errEl = document.getElementById('setup-error');
+  errEl.textContent = '';
   if (!pw1) { errEl.textContent = 'Voer een wachtwoord in.'; return; }
   if (pw1.length < 4) { errEl.textContent = 'Minimaal 4 tekens.'; return; }
   if (pw1 !== pw2) { errEl.textContent = 'Wachtwoorden komen niet overeen.'; return; }
+  errEl.style.color = '#d9a300';
+  errEl.textContent = 'Bezig...';
   try {
     if (!db) initFirebase();
     const hashed = await hashPassword(pw1);
@@ -492,6 +495,7 @@ KB.handleSetup = async function() {
     setupListeners();
     setupEventListeners();
   } catch(e) {
+    errEl.style.color = '';
     errEl.textContent = 'Fout: ' + e.message;
   }
 };
@@ -506,7 +510,7 @@ KB.handleLogin = async function() {
     if (!stored) {
       // Geen wachtwoord ingesteld → schakel naar setup
       document.getElementById('login-mode').style.display = 'none';
-      document.getElementById('setup-mode').style.display = '';
+      document.getElementById('setup-mode').style.display = 'flex';
       document.getElementById('setup-pw1').focus();
       return;
     }
