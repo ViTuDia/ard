@@ -1372,11 +1372,13 @@ function setupEventListeners() {
       case 'selectDev':
         STATE.ui.selectedMatch = null;
         STATE.ui.selectedDev = STATE.ui.selectedDev === id ? null : id;
+        if (isMob() && STATE.ui.selectedDev) { STATE.ui.mobTab = 'pipeline'; }
         render(); break;
       case 'selectMatch':
         if (e.target.closest('[data-action="toggleMatchCollapse"]') || e.target.closest('a') || e.target.closest('[data-action="unlinkDev"]') || e.target.closest('[data-action="editMatch"]') || e.target.closest('[data-action="addCoalition"]') || e.target.closest('[data-action="editCoalition"]') || e.target.closest('[data-action="deleteCoalition"]')) return;
         STATE.ui.selectedDev = null;
         STATE.ui.selectedMatch = STATE.ui.selectedMatch === id ? null : id;
+        if (isMob() && STATE.ui.selectedMatch) { STATE.ui.mobTab = 'devs'; }
         render(); break;
       case 'clearSelection':
         STATE.ui.selectedDev = null; STATE.ui.selectedMatch = null;
