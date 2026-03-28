@@ -121,10 +121,124 @@
     .footer { padding: 8px 24px; border-top: 1px solid var(--zachtgrijs); background: var(--footerBg); display: flex; justify-content: space-between; }
     .footer span { font-size: 9px; color: var(--grijs); font-weight: 300; }
 
+    /* Mobiele elementen (verborgen op desktop) */
+    .mob-tabs { display: none; }
+    .mob-stage-tabs { display: none; }
+    .mob-move-btns { display: none; }
+
     /* Print */
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       [data-noprint] { display: none !important; }
+      .mob-tabs { display: none !important; }
+    }
+
+    /* ─── MOBIEL (< 768px) ─── */
+    @media (max-width: 767px) {
+      /* Header compact */
+      .header { padding: 10px 12px; gap: 6px; }
+      .header-left { gap: 10px; }
+      .header-logo-ard { font-size: 20px; letter-spacing: 2px; }
+      .header-logo-sub { display: none; }
+      .header-div { height: 24px; }
+      .header-title-name { font-size: 16px; }
+      .header-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+      .header-stat { display: none; }
+      .header-right .btn-sm { padding: 6px 10px; font-size: 12px; min-height: 34px; }
+
+      /* Selectiebalk compact */
+      .sel-bar { padding: 6px 12px; }
+
+      /* Main: stacked i.p.v. naast elkaar */
+      .main { flex-direction: column; overflow: visible; }
+      .left-panels { width: 100%; flex-direction: column; border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
+      .panel { width: 100%; padding: 12px; }
+      .panel:first-child { border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
+
+      /* Mobiele tab-navigatie */
+      .mob-tabs {
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+        background: var(--panelBg); border-top: 1px solid var(--zachtgrijs);
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      }
+      .mob-tab {
+        flex: 1; padding: 8px 4px; text-align: center; font-size: 10px; font-weight: 500;
+        font-family: inherit; border: none; cursor: pointer; background: transparent;
+        color: var(--txtSecondary); letter-spacing: 0.5px; text-transform: uppercase;
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        min-height: 52px; justify-content: center;
+      }
+      .mob-tab.active { color: var(--geel); }
+      .mob-tab-icon { font-size: 18px; }
+
+      /* Verberg secties op basis van actieve tab */
+      .main .left-panels { display: none; }
+      .main .pipeline { display: none; }
+      body.mob-view-devs .main .left-panels { display: flex; flex-direction: column; }
+      body.mob-view-devs .main .left-panels .panel:last-child { display: none; }
+      body.mob-view-kansen .main .left-panels { display: flex; flex-direction: column; }
+      body.mob-view-kansen .main .left-panels .panel:first-child { display: none; }
+      body.mob-view-kansen .main .left-panels .panel:last-child { border-bottom: none; }
+      body.mob-view-pipeline .main .pipeline { display: flex; flex-direction: column; }
+
+      /* Pipeline kolommen: stacked met tabs */
+      .pipeline { flex-direction: column; overflow-x: visible; }
+      .pipe-col { min-width: unset; border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
+      .pipe-col:last-child { border-bottom: none; }
+      .pipe-col-body { padding: 8px 8px 16px; }
+
+      /* Pipeline stage tabs (mobiel) */
+      .mob-stage-tabs {
+        display: flex; overflow-x: auto; gap: 0; border-bottom: 1px solid var(--zachtgrijs);
+        background: var(--panelBg); position: sticky; top: 0; z-index: 10;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mob-stage-tab {
+        flex: 1; min-width: 0; padding: 10px 6px; text-align: center; font-size: 11px;
+        font-weight: 500; font-family: inherit; border: none; cursor: pointer;
+        background: transparent; color: var(--txtSecondary); white-space: nowrap;
+        border-bottom: 3px solid transparent;
+      }
+      .mob-stage-tab.active { border-bottom-color: var(--geel); color: var(--txtPrimary); }
+
+      /* Verberg niet-actieve pipeline kolommen */
+      body.mob-view-pipeline .pipe-col { display: none; }
+      body.mob-view-pipeline .pipe-col.mob-active { display: flex; }
+
+      /* Kaarten: grotere tap targets */
+      .kans-card { padding: 12px; margin-bottom: 6px; cursor: default; }
+      .match-card { cursor: default; }
+      .dev-item { padding: 10px 12px; margin-left: 0; margin-bottom: 4px; min-height: 44px; }
+      .dev-type-header { min-height: 36px; }
+      .btn { min-height: 36px; padding: 10px 16px; font-size: 13px; }
+      .btn-sm { padding: 6px 10px; font-size: 11px; min-height: 32px; }
+      .btn-xs { padding: 5px 8px; font-size: 11px; min-height: 28px; }
+      .btn-icon { padding: 6px 8px; font-size: 16px; min-height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; }
+      .btn-add-col { padding: 14px; font-size: 13px; }
+      .cb { width: 22px; height: 22px; font-size: 12px; }
+      .coalition { padding: 10px; }
+
+      /* Touch move knoppen (vervangt drag & drop) */
+      .mob-move-btns { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 6px; }
+      .mob-move-btn {
+        padding: 5px 8px; font-size: 10px; font-weight: 500; font-family: inherit;
+        border: 1px solid var(--zachtgrijs); border-radius: 3px; cursor: pointer;
+        background: var(--lichtgrijs); color: var(--txtSecondary);
+        text-transform: uppercase; letter-spacing: 0.3px;
+      }
+
+      /* Verberg drag-gerelateerde elementen op mobiel */
+      [draggable="true"] { -webkit-user-drag: none; cursor: default; }
+      .drop-zone-active { display: none; }
+
+      /* Footer: ruimte voor tab-balk */
+      .footer { padding-bottom: 60px; }
+
+      /* Modal: full width op mobiel */
+      .modal-overlay { padding: 10px; align-items: flex-end; }
+      .modal { max-height: 90vh; border-radius: 12px 12px 0 0; }
+      .modal-body { padding: 16px; }
+      .field input, .field select, .field textarea { padding: 10px 12px; font-size: 15px; }
     }
   </style>
 </head>
@@ -155,6 +269,18 @@
   <div id="app">
     <div id="board-container"></div>
     <div id="modal-container"></div>
+    <!-- Mobiele tab-balk -->
+    <div class="mob-tabs" data-noprint>
+      <button class="mob-tab active" data-action="mobTab" data-tab="devs">
+        <span class="mob-tab-icon">&#128101;</span>Devs
+      </button>
+      <button class="mob-tab" data-action="mobTab" data-tab="kansen">
+        <span class="mob-tab-icon">&#127919;</span>Kansen
+      </button>
+      <button class="mob-tab" data-action="mobTab" data-tab="pipeline">
+        <span class="mob-tab-icon">&#128202;</span>Pipeline
+      </button>
+    </div>
   </div>
 
   <script>
@@ -221,10 +347,12 @@ const STATE = {
     collapsedKansen: {},  // kansId -> true
     dragging: null, draggingKans: null, dragOver: null, dragKansen: false,
     modal: null, modalData: null, modalExtra: null,
+    mobTab: 'devs', mobStage: 'matches',
   }
 };
 
 // Data helpers
+function isMob() { return window.innerWidth < 768; }
 function C() { return STATE.ui.dark ? DARK : LIGHT; }
 function stageColor(stageId) { return (STATE.ui.dark ? STAGE_COLORS_DARK : STAGE_COLORS_LIGHT)[stageId] || '#888'; }
 function stageBg(stageId) { return (STATE.ui.dark ? STAGE_BG_DARK : STAGE_BG_LIGHT)[stageId] || '#fff'; }
@@ -453,6 +581,31 @@ function render() {
 
   document.getElementById('board-container').innerHTML = html;
   renderModal();
+  updateMobView();
+}
+
+// Mobiele view helper: body-klasse en tab-balk sync
+function updateMobView() {
+  if (!isMob()) {
+    document.body.classList.remove('mob-view-devs','mob-view-kansen','mob-view-pipeline');
+    return;
+  }
+  const tab = STATE.ui.mobTab;
+  document.body.classList.remove('mob-view-devs','mob-view-kansen','mob-view-pipeline');
+  document.body.classList.add('mob-view-' + tab);
+  // Tab-balk active state
+  document.querySelectorAll('.mob-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  // Pipeline stage tabs: actieve kolom
+  if (tab === 'pipeline') {
+    document.querySelectorAll('.pipe-col').forEach(col => {
+      col.classList.toggle('mob-active', col.dataset.stage === STATE.ui.mobStage);
+    });
+    document.querySelectorAll('.mob-stage-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.stage === STATE.ui.mobStage);
+    });
+  }
 }
 
 function renderHeader(c, devs, kansen, matches, alarms) {
@@ -649,7 +802,19 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
 
 function renderPipeline(c, matches, kansen, devs, dts) {
   const {selectedDev, selectedMatch, dragOver} = STATE.ui;
+  const mob = isMob();
   let html = '<div class="pipeline">';
+
+  // Mobiele stage-tabs
+  if (mob) {
+    html += '<div class="mob-stage-tabs">';
+    STAGES.forEach(s => {
+      const sc2 = stageColor(s.id);
+      const cnt = matches.filter(m => m.stage === s.id).length;
+      html += `<button class="mob-stage-tab ${STATE.ui.mobStage===s.id?'active':''}" data-action="mobStageTab" data-stage="${s.id}" style="${STATE.ui.mobStage===s.id?'color:'+sc2+';border-bottom-color:'+sc2:''}">${esc(s.short)} (${cnt})</button>`;
+    });
+    html += '</div>';
+  }
 
   STAGES.forEach(stage => {
     const sc = stageColor(stage.id);
@@ -784,10 +949,23 @@ function renderMatchCard(c, match, stage, devs, dts) {
     });
 
     // Actieknoppen
-    html += `<div style="border-top:1px solid ${c.zachtgrijs};margin-top:6px;padding-top:6px;display:flex;gap:5px" data-noprint>`;
-    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
-    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
+    html += `<div style="border-top:1px solid ${c.zachtgrijs};margin-top:6px;padding-top:6px;display:flex;gap:5px;flex-wrap:wrap" data-noprint>`;
+    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
+    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
     html += '</div>';
+
+    // Mobiele verplaats-knoppen (vervangt drag & drop)
+    if (isMob()) {
+      html += `<div class="mob-move-btns" data-noprint>`;
+      STAGES.forEach(s => {
+        if (s.id !== stage.id) {
+          const sc2 = stageColor(s.id);
+          html += `<button class="mob-move-btn" style="border-color:${sc2};color:${sc2}" data-action="mobMoveMatch" data-mid="${match.id}" data-to="${s.id}">\u2192 ${esc(s.short)}</button>`;
+        }
+      });
+      html += `<button class="mob-move-btn" style="border-color:${c.rood};color:${c.rood}" data-action="mobUnmatch" data-mid="${match.id}">\u2715 Unmatch</button>`;
+      html += '</div>';
+    }
 
     html += '</div>'; // einde koppelingen-sectie
   }
@@ -1519,11 +1697,44 @@ function setupEventListeners() {
       case 'closeModal':
         STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         renderModal(); break;
+
+      // ─── Mobiel ───
+      case 'mobTab':
+        STATE.ui.mobTab = el.dataset.tab;
+        updateMobView(); break;
+      case 'mobStageTab':
+        STATE.ui.mobStage = el.dataset.stage;
+        updateMobView(); break;
+      case 'mobMoveMatch': {
+        const mid = el.dataset.mid;
+        const toStage = el.dataset.to;
+        const m = STATE.data.matches[mid]; if (!m) break;
+        const oldIdx = STAGE_ORDER[m.stage] || 0;
+        const newIdx = STAGE_ORDER[toStage] || 0;
+        if (newIdx > oldIdx && STAGE_GATES[toStage]) {
+          STATE.ui.modal = 'stageGate';
+          STATE.ui.modalData = {checked: false};
+          STATE.ui.modalExtra = {...STAGE_GATES[toStage], dragMatchId: mid, pendingStage: toStage};
+          renderModal();
+        } else {
+          const cnt = objToArr(STATE.data.matches).filter(x => x.stage === toStage).length;
+          const hist = [...(m.stageHistory||[]), {stage:toStage, at:today()}];
+          fbUpdate(`matches/${mid}`, {stage:toStage, so:cnt, stageHistory:hist, updatedAt:today()});
+        }
+        break;
+      }
+      case 'mobUnmatch': {
+        const mid = el.dataset.mid;
+        STATE.ui.modal = 'confirmDelete';
+        STATE.ui.modalExtra = {type:'match',id:mid};
+        renderModal(); break;
+      }
     }
   });
 
-  // ─── Drag & Drop ───
+  // ─── Drag & Drop (alleen desktop) ───
   document.body.addEventListener('dragstart', e => {
+    if (isMob()) { e.preventDefault(); return; }
     const el = e.target.closest('[data-drag-type]');
     if (!el) return;
     const type = el.dataset.dragType;
@@ -1635,6 +1846,8 @@ function setupEventListeners() {
   document.getElementById('setup-pw2').addEventListener('keydown', e => {
     if (e.key === 'Enter') KB.handleSetup();
   });
+  // Resize: update mobiele view
+  window.addEventListener('resize', () => updateMobView());
 })();
 
   </script>
