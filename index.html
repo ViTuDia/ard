@@ -199,7 +199,7 @@
         background: transparent; color: var(--txtSecondary); white-space: nowrap;
         border-bottom: 3px solid transparent;
       }
-      .mob-stage-tab.active { border-bottom-color: var(--geel); color: var(--txtPrimary); }
+      .mob-stage-tab.active { color: var(--txtPrimary); }
 
       /* Verberg niet-actieve pipeline kolommen */
       body.mob-view-pipeline .pipe-col { display: none; }
@@ -848,7 +848,8 @@ function renderPipeline(c, matches, kansen, devs, dts) {
     STAGES.forEach(s => {
       const sc2 = stageColor(s.id);
       const cnt = matches.filter(m => m.stage === s.id).length;
-      html += `<button class="mob-stage-tab ${STATE.ui.mobStage===s.id?'active':''}" data-stage="${s.id}" onclick="KB.mobStageSwitch('${s.id}')" style="${STATE.ui.mobStage===s.id?'color:'+sc2+';border-bottom-color:'+sc2:''}">${esc(s.short)} (${cnt})</button>`;
+      const isAct = STATE.ui.mobStage===s.id;
+      html += `<button class="mob-stage-tab ${isAct?'active':''}" data-stage="${s.id}" onclick="KB.mobStageSwitch('${s.id}')" style="color:${sc2};border-bottom:3px solid ${isAct?sc2:'transparent'}">${esc(s.short)} (${cnt})</button>`;
     });
     html += '</div>';
   }
