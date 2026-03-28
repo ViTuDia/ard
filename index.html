@@ -32,6 +32,8 @@
     #login-screen input:focus { outline: none; border-color: var(--geel); }
     #login-screen button { margin-top: 10px; padding: 10px 32px; font-size: 13px; font-weight: 500; background: var(--geel); color: #000; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
     #login-error { color: var(--rood); font-size: 12px; margin-top: 8px; min-height: 18px; }
+    #login-screen .login-setup-msg { color: #ffffff88; font-size: 11px; margin-bottom: 12px; max-width: 260px; text-align: center; line-height: 1.5; }
+    #login-screen .login-success { color: var(--groen); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
     /* Layout */
     #app { display: none; flex-direction: column; min-height: 100vh; }
@@ -133,9 +135,20 @@
       <div class="logo-ard">ARD</div>
       <div class="logo-sub">ATELIERRUIMDENKERS</div>
     </div>
-    <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
-    <button onclick="KB.handleLogin()">Openen</button>
-    <div id="login-error"></div>
+    <!-- Login-modus (standaard) -->
+    <div id="login-mode">
+      <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
+      <button onclick="KB.handleLogin()">Openen</button>
+      <div id="login-error"></div>
+    </div>
+    <!-- Setup-modus (als nog geen wachtwoord is ingesteld) -->
+    <div id="setup-mode" style="display:none">
+      <div class="login-setup-msg">Geen wachtwoord ingesteld. Kies een wachtwoord om de app te beveiligen.</div>
+      <input type="password" id="setup-pw1" placeholder="Nieuw wachtwoord" style="margin-bottom:6px">
+      <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
+      <button onclick="KB.handleSetup()">Instellen</button>
+      <div id="setup-error"></div>
+    </div>
   </div>
 
   <!-- App -->
@@ -317,13 +330,58 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+// Check of er al een wachtwoord is ingesteld
+KB.checkSetup = async function() {
+  try {
+    if (!db) initFirebase();
+    const snap = await db.ref('meta/passwordHash').once('value');
+    if (!snap.val()) {
+      // Geen wachtwoord → toon setup-modus
+      document.getElementById('login-mode').style.display = 'none';
+      document.getElementById('setup-mode').style.display = '';
+      document.getElementById('setup-pw1').focus();
+    }
+  } catch(e) {
+    // Bij fout: toon gewoon login (setup is optioneel)
+  }
+};
+
+KB.handleSetup = async function() {
+  const pw1 = document.getElementById('setup-pw1').value;
+  const pw2 = document.getElementById('setup-pw2').value;
+  const errEl = document.getElementById('setup-error');
+  if (!pw1) { errEl.textContent = 'Voer een wachtwoord in.'; return; }
+  if (pw1.length < 4) { errEl.textContent = 'Minimaal 4 tekens.'; return; }
+  if (pw1 !== pw2) { errEl.textContent = 'Wachtwoorden komen niet overeen.'; return; }
+  try {
+    if (!db) initFirebase();
+    const hashed = await hashPassword(pw1);
+    await db.ref('meta/passwordHash').set(hashed);
+    localStorage.setItem('kb_session', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    applyTheme();
+    setupListeners();
+    setupEventListeners();
+  } catch(e) {
+    errEl.textContent = 'Fout: ' + e.message;
+  }
+};
+
 KB.handleLogin = async function() {
   const pw = document.getElementById('login-pw').value;
   if (!pw) return;
   try {
-    initFirebase();
+    if (!db) initFirebase();
     const snap = await db.ref('meta/passwordHash').once('value');
     const stored = snap.val();
+    if (!stored) {
+      // Geen wachtwoord ingesteld → schakel naar setup
+      document.getElementById('login-mode').style.display = 'none';
+      document.getElementById('setup-mode').style.display = '';
+      document.getElementById('setup-pw1').focus();
+      return;
+    }
     const hashed = await hashPassword(pw);
     if (hashed === stored) {
       localStorage.setItem('kb_session', '1');
@@ -412,6 +470,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <button data-noprint class="btn btn-sm" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:11px" data-action="showAlerts">\u26A0 ${al} alert${al!==1?'s':''}</button>
       <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
       <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="print">Print</button>
+      <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="showAdmin">\u2699</button>
     </div>
   </div>`;
 }
@@ -770,6 +829,7 @@ function renderModal() {
     case 'confirmDelete': { w=380; title='Bevestig verwijderen'; body = renderConfirmDeleteModal(c); break; }
     case 'alerts': { w=500; title=`Alerts (${getAlarms().length})`; body = renderAlertsModal(c); break; }
     case 'stageGate': { w=400; title=modalExtra?.q||'Bevestigen'; body = renderStageGateModal(c); break; }
+    case 'admin': { w=440; title='\u2699 Admin'; body = renderAdminModal(c); break; }
   }
 
   html += `<div class="modal" style="max-width:${w}px" onclick="event.stopPropagation()">`;
@@ -1017,6 +1077,25 @@ function renderStageGateModal(c) {
     </div>`;
 }
 
+function renderAdminModal(c) {
+  const d = STATE.ui.modalData || {};
+  const pwMsg = d.pwMsg || '';
+  const pwOk = d.pwOk || false;
+  return `
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Wachtwoord wijzigen</div>
+      <div class="field"><label>Huidig wachtwoord</label><input type="password" value="${esc(d.oldPw||'')}" oninput="KB.mf('oldPw',this.value)"></div>
+      <div class="field"><label>Nieuw wachtwoord</label><input type="password" value="${esc(d.newPw||'')}" oninput="KB.mf('newPw',this.value)"></div>
+      <div class="field"><label>Herhaal nieuw wachtwoord</label><input type="password" value="${esc(d.newPw2||'')}" oninput="KB.mf('newPw2',this.value)"></div>
+      ${pwMsg ? `<div style="font-size:11px;margin-bottom:8px;color:${pwOk?c.groen:c.rood}">${esc(pwMsg)}</div>` : ''}
+      <button class="btn btn-black btn-sm" data-action="changePassword">Wijzig wachtwoord</button>
+    </div>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;display:flex;justify-content:space-between;align-items:center">
+      <button class="btn btn-red btn-sm" data-action="logout">Uitloggen</button>
+      <button class="btn btn-grey btn-sm" data-action="closeModal">Sluiten</button>
+    </div>`;
+}
+
 // Modal field helper — update modalData zonder re-render tenzij nodig
 KB.mf = function(field, value) {
   if (STATE.ui.modalData) {
@@ -1113,6 +1192,33 @@ function setupEventListeners() {
       case 'showAlerts':
         STATE.ui.modal = 'alerts'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         renderModal(); break;
+      case 'showAdmin':
+        STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false}; STATE.ui.modalExtra = null;
+        renderModal(); break;
+      case 'changePassword': {
+        (async () => {
+          const md = STATE.ui.modalData; if (!md) return;
+          if (!md.oldPw) { md.pwMsg = 'Voer huidig wachtwoord in.'; md.pwOk = false; renderModal(); return; }
+          if (!md.newPw || md.newPw.length < 4) { md.pwMsg = 'Nieuw wachtwoord: minimaal 4 tekens.'; md.pwOk = false; renderModal(); return; }
+          if (md.newPw !== md.newPw2) { md.pwMsg = 'Nieuwe wachtwoorden komen niet overeen.'; md.pwOk = false; renderModal(); return; }
+          try {
+            const snap = await db.ref('meta/passwordHash').once('value');
+            const stored = snap.val();
+            const oldHash = await hashPassword(md.oldPw);
+            if (oldHash !== stored) { md.pwMsg = 'Huidig wachtwoord is onjuist.'; md.pwOk = false; renderModal(); return; }
+            const newHash = await hashPassword(md.newPw);
+            await db.ref('meta/passwordHash').set(newHash);
+            md.pwMsg = 'Wachtwoord gewijzigd!'; md.pwOk = true;
+            md.oldPw = ''; md.newPw = ''; md.newPw2 = '';
+            renderModal();
+          } catch(err) { md.pwMsg = 'Fout: ' + err.message; md.pwOk = false; renderModal(); }
+        })();
+        break;
+      }
+      case 'logout':
+        localStorage.removeItem('kb_session');
+        location.reload();
+        break;
 
       // Dev CRUD
       case 'addDev': {
@@ -1516,10 +1622,18 @@ function setupEventListeners() {
     applyTheme();
     setupListeners();
     setupEventListeners();
+  } else {
+    // Check of er al een wachtwoord is → zo niet, toon setup
+    initFirebase();
+    KB.checkSetup();
   }
   // Enter-toets op login
   document.getElementById('login-pw').addEventListener('keydown', e => {
     if (e.key === 'Enter') KB.handleLogin();
+  });
+  // Enter-toets op setup
+  document.getElementById('setup-pw2').addEventListener('keydown', e => {
+    if (e.key === 'Enter') KB.handleSetup();
   });
 })();
 

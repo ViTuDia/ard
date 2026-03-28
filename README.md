@@ -25,18 +25,9 @@ const firebaseConfig = {
 
 ### 2. Wachtwoord instellen
 
-Genereer een SHA-256 hash van je gewenste wachtwoord:
+Bij de eerste keer openen detecteert de app automatisch dat er nog geen wachtwoord is. Je krijgt een setup-scherm waar je direct een wachtwoord kiest. Het wachtwoord wordt als SHA-256 hash opgeslagen in Firebase (`/meta/passwordHash`).
 
-```bash
-echo -n "jouw-wachtwoord" | shasum -a 256
-```
-
-Sla de hash op in Firebase Realtime Database onder `/meta/passwordHash`:
-
-```
-meta/
-  passwordHash: "de-hash-hier"
-```
+Het wachtwoord kan later gewijzigd worden via het **Admin-menu** (⚙ knop in de header).
 
 ### 3. Database rules deployen
 
