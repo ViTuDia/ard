@@ -666,9 +666,9 @@ function renderHeader(c, devs, kansen, matches, alarms) {
 }
 
 function renderSelectionBar(c, selName, matches, unmatched) {
-  const allMFolded = matches.length > 0 && matches.every(m => m.col);
-  const allKFolded = unmatched.length > 0 && unmatched.every(k => STATE.ui.collapsedKansen[k.id]);
-  const allFolded = allMFolded && allKFolded;
+  const allMFolded = matches.length === 0 || matches.every(m => m.col);
+  const allKFolded = unmatched.length === 0 || unmatched.every(k => STATE.ui.collapsedKansen[k.id]);
+  const allFolded = allMFolded && allKFolded && (matches.length > 0 || unmatched.length > 0);
   return `<div class="sel-bar">
     <div style="display:flex;align-items:center;gap:10px">
       ${selName ? `<span class="sel-bar-name"><span class="sel-bar-slash">/ </span>${esc(selName)}</span>` : ''}
@@ -1317,7 +1317,27 @@ KB.mf = function(field, value) {
   if (STATE.ui.modalData) {
     STATE.ui.modalData[field] = value;
     // Herrender modal alleen als het een veld is dat de knop-status beïnvloedt
-    if (['label','short','checked'].includes(field)) renderModal();
+    if (['label','short','checked'].includes(field)) {
+      // Bewaar actief element + cursor positie voor focus-herstel
+      const ae = document.activeElement;
+      const sel = ae ? { start: ae.selectionStart, end: ae.selectionEnd } : null;
+      const tag = ae ? ae.tagName : '';
+      const val = ae ? ae.value : '';
+      renderModal();
+      // Herstel focus na re-render
+      if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        const inputs = document.querySelectorAll('.modal-body input, .modal-body textarea');
+        for (const inp of inputs) {
+          if (inp.value === val && inp.tagName === tag) {
+            inp.focus();
+            if (sel && sel.start !== null) {
+              try { inp.setSelectionRange(sel.start, sel.end); } catch(e) {}
+            }
+            break;
+          }
+        }
+      }
+    }
   }
 };
 KB.mfStage = function(newStage) {
