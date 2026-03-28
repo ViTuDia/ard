@@ -1047,7 +1047,7 @@ function renderModal() {
     case 'admin': { w=440; title='\u2699 Admin'; body = renderAdminModal(c); break; }
   }
 
-  html += `<div class="modal" style="max-width:${w}px" onclick="event.stopPropagation()">`;
+  html += `<div class="modal" style="max-width:${w}px" data-action="modalBody">`;
   html += `<div class="modal-head"><h3>${title}</h3><button class="btn-icon" style="font-size:18px" data-action="closeModal">\u2715</button></div>`;
   html += `<div class="modal-body">${body}</div>`;
   html += '</div></div>';
@@ -1731,6 +1731,7 @@ function setupEventListeners() {
       }
 
       // Modal sluiten
+      case 'modalBody': break; // absorbeert clicks op lege modal-ruimte
       case 'closeModal':
         STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         renderModal(); break;
