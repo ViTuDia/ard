@@ -1899,124 +1899,68 @@ function setupEventListeners() {
     }
   });
 
-  // ─── Drag & Drop (alleen desktop) ───
-  let dragType = null, dragSrcId = null; // houdt bij wat we slepen
-  document.body.addEventListener('dragstart', e => {
-    if (isMob()) { e.preventDefault(); return; }
-    const el = e.target.closest('[data-drag-type]');
-    if (!el) return;
-    const type = el.dataset.dragType;
-    const dragId = el.dataset.dragId;
-    dragType = type;
-    dragSrcId = dragId;
-    e.dataTransfer.setData('text/plain', JSON.stringify({type, id:dragId}));
-    e.dataTransfer.effectAllowed = 'move';
-    if (type === 'match') STATE.ui.dragging = dragId;
-    if (type === 'kans') STATE.ui.draggingKans = dragId;
-    setTimeout(() => { el.style.opacity = '0.4'; }, 0);
-  });
-
-  document.body.addEventListener('dragend', e => {
-    const el = e.target.closest('[data-drag-type]');
-    if (el) el.style.opacity = '1';
-    STATE.ui.dragging = null;
-    STATE.ui.draggingKans = null;
-    STATE.ui.dragOver = null;
-    STATE.ui.dragKansen = false;
-    dragType = null; dragSrcId = null;
-    clearDragIndicators();
-    render();
-  });
-
-  // Drop targets + visuele indicator
+  // ─── Drag & Drop ───
+  let dragType = null, dragSrcId = null;
   let lastIndicatorId = null;
+
   function clearDragIndicators() {
     document.querySelectorAll('.drag-indicator').forEach(el => el.remove());
     lastIndicatorId = null;
   }
 
-  // Vind het juiste drop-target element op basis van drag-type
-  function findDropTarget(e) {
-    if (!dragType) return null;
+  function findDropTargetAt(el) {
+    if (!dragType || !el) return null;
     if (dragType === 'devType') {
-      // Zoek de devtype-groep wrapper
-      const grp = e.target.closest('[data-devtype-group]');
+      const grp = el.closest('[data-devtype-group]');
       if (grp) return grp.querySelector('[data-drag-type="devType"]');
       return null;
     }
     if (dragType === 'kansCat') {
-      const grp = e.target.closest('[data-kanscat-group]');
+      const grp = el.closest('[data-kanscat-group]');
       if (grp) return grp.querySelector('[data-drag-type="kansCat"]');
       return null;
     }
     if (dragType === 'match') {
-      return e.target.closest('[data-drag-type="match"]');
+      return el.closest('[data-drag-type="match"]');
     }
     return null;
   }
 
-  document.body.addEventListener('dragover', e => {
-    const col = e.target.closest('[data-stage]');
-    const kansenPanel = e.target.closest('#kansen-panel');
-    const panel = e.target.closest('.panel');
-    const dropTarget = findDropTarget(e);
-
-    if (col || kansenPanel || panel || dropTarget) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-
-      // Kolom-highlight voor match/kans drag
-      if (col && (dragType === 'match' || dragType === 'kans')) {
-        if (STATE.ui.dragOver !== col.dataset.stage) {
-          STATE.ui.dragOver = col.dataset.stage;
-          STATE.ui.dragKansen = false;
-          render();
-        }
-      }
-      if (kansenPanel && dragType === 'match' && !STATE.ui.dragKansen) {
-        STATE.ui.dragKansen = true;
-        STATE.ui.dragOver = null;
-        render();
-      }
-
-      // Visuele drop-indicator — niet tonen op het item zelf
-      if (dropTarget && dropTarget.dataset.dragId !== dragSrcId) {
-        const tid = dropTarget.dataset.dragId;
-        if (tid !== lastIndicatorId) {
-          clearDragIndicators();
-          lastIndicatorId = tid;
-          // Voor devType/kansCat: indicator op de groep-wrapper
-          const indicatorParent = (dragType === 'devType')
-            ? dropTarget.closest('[data-devtype-group]')
-            : (dragType === 'kansCat')
-            ? dropTarget.closest('[data-kanscat-group]')
-            : dropTarget;
-          if (indicatorParent) {
-            const rect = indicatorParent.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            const indicator = document.createElement('div');
-            indicator.className = 'drag-indicator';
-            if (e.clientY < midY) {
-              indicatorParent.parentNode.insertBefore(indicator, indicatorParent);
-            } else {
-              indicatorParent.parentNode.insertBefore(indicator, indicatorParent.nextSibling);
-            }
+  function showIndicatorAt(targetEl, clientY) {
+    if (!targetEl) return;
+    const dropTarget = findDropTargetAt(targetEl);
+    if (dropTarget && dropTarget.dataset.dragId !== dragSrcId) {
+      const tid = dropTarget.dataset.dragId;
+      if (tid !== lastIndicatorId) {
+        clearDragIndicators();
+        lastIndicatorId = tid;
+        const indicatorParent = (dragType === 'devType')
+          ? dropTarget.closest('[data-devtype-group]')
+          : (dragType === 'kansCat')
+          ? dropTarget.closest('[data-kanscat-group]')
+          : dropTarget;
+        if (indicatorParent) {
+          const rect = indicatorParent.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          const indicator = document.createElement('div');
+          indicator.className = 'drag-indicator';
+          if (clientY < midY) {
+            indicatorParent.parentNode.insertBefore(indicator, indicatorParent);
+          } else {
+            indicatorParent.parentNode.insertBefore(indicator, indicatorParent.nextSibling);
           }
         }
-      } else if (lastIndicatorId || (dropTarget && dropTarget.dataset.dragId === dragSrcId)) {
-        clearDragIndicators();
       }
+    } else if (lastIndicatorId) {
+      clearDragIndicators();
     }
-  });
+  }
 
-  document.body.addEventListener('drop', e => {
-    e.preventDefault();
-    let data;
-    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
-
-    // ─── DevType reorder ───
+  // Gedeelde drop-logica (gebruikt door HTML5 drop EN touch drop)
+  function executeDrop(data, targetEl, clientY) {
+    // DevType reorder
     if (data.type === 'devType') {
-      const grp = e.target.closest('[data-devtype-group]');
+      const grp = targetEl.closest('[data-devtype-group]');
       const targetId = grp ? grp.dataset.devtypeGroup : null;
       if (targetId && targetId !== data.id) {
         const dts = sortedArr(STATE.data.devTypes);
@@ -2024,7 +1968,7 @@ function setupEventListeners() {
         const targetIdx = dts.findIndex(t => t.id === targetId);
         if (fromIdx >= 0 && targetIdx >= 0) {
           const rect = grp.getBoundingClientRect();
-          const insertAfter = e.clientY > rect.top + rect.height / 2;
+          const insertAfter = clientY > rect.top + rect.height / 2;
           let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
           if (fromIdx < toIdx) toIdx--;
           if (fromIdx !== toIdx) {
@@ -2036,10 +1980,11 @@ function setupEventListeners() {
           }
         }
       }
+      return;
     }
-    // ─── KansCat reorder ───
-    else if (data.type === 'kansCat') {
-      const grp = e.target.closest('[data-kanscat-group]');
+    // KansCat reorder
+    if (data.type === 'kansCat') {
+      const grp = targetEl.closest('[data-kanscat-group]');
       const targetId = grp ? grp.dataset.kanscatGroup : null;
       if (targetId && targetId !== data.id) {
         const kcs = sortedArr(STATE.data.kansCats);
@@ -2047,7 +1992,7 @@ function setupEventListeners() {
         const targetIdx = kcs.findIndex(c => c.id === targetId);
         if (fromIdx >= 0 && targetIdx >= 0) {
           const rect = grp.getBoundingClientRect();
-          const insertAfter = e.clientY > rect.top + rect.height / 2;
+          const insertAfter = clientY > rect.top + rect.height / 2;
           let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
           if (fromIdx < toIdx) toIdx--;
           if (fromIdx !== toIdx) {
@@ -2059,13 +2004,13 @@ function setupEventListeners() {
           }
         }
       }
+      return;
     }
 
-    const col = e.target.closest('[data-stage]');
-    const kansenPanel = e.target.closest('#kansen-panel');
+    const col = targetEl.closest('[data-stage]');
+    const kansenPanel = targetEl.closest('#kansen-panel');
 
     if (kansenPanel && data.type === 'match') {
-      // Waarschuwing: match verwijderen = devs loskoppelen
       const m = STATE.data.matches[data.id];
       const kans = m ? STATE.data.kansen[m.kid] : null;
       STATE.ui.modal = 'confirmDelete';
@@ -2075,15 +2020,14 @@ function setupEventListeners() {
       const newStage = col.dataset.stage;
       const m = STATE.data.matches[data.id]; if (!m) return;
       if (m.stage === newStage) {
-        // Reorder binnen kolom — alleen als positie verandert
-        const targetCard = e.target.closest('[data-drag-type="match"]');
+        const targetCard = targetEl.closest('[data-drag-type="match"]');
         if (targetCard && targetCard.dataset.dragId !== data.id) {
           const sm = objToArr(STATE.data.matches).filter(x => x.stage === newStage).sort((a,b) => (a.so||0) - (b.so||0));
           const fromIdx = sm.findIndex(x => x.id === data.id);
           const targetIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
           if (fromIdx >= 0 && targetIdx >= 0) {
             const rect = targetCard.getBoundingClientRect();
-            const insertAfter = e.clientY > rect.top + rect.height / 2;
+            const insertAfter = clientY > rect.top + rect.height / 2;
             let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
             if (fromIdx < toIdx) toIdx--;
             if (fromIdx !== toIdx) {
@@ -2099,31 +2043,152 @@ function setupEventListeners() {
         const oldIdx = STAGE_ORDER[m.stage] || 0;
         const newIdx = STAGE_ORDER[newStage] || 0;
         if (newIdx > oldIdx && STAGE_GATES[newStage]) {
-          // Stage gate
           STATE.ui.modal = 'stageGate';
           STATE.ui.modalData = {checked: false};
           STATE.ui.modalExtra = {...STAGE_GATES[newStage], dragMatchId: data.id, pendingStage: newStage};
           renderModal();
         } else {
-          // Vrij verplaatsen (terug of geen gate)
           const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
           const hist = [...(m.stageHistory||[]), {stage:newStage, at:today()}];
           fbUpdate(`matches/${data.id}`, {stage:newStage, so:cnt, stageHistory:hist, updatedAt:today()});
         }
       }
     } else if (col && data.type === 'kans') {
-      // Kans naar pipeline → open dev-picker
       const k = STATE.data.kansen[data.id]; if (!k) return;
       STATE.ui.modal = 'pickDevs';
       STATE.ui.modalData = {selectedDevs:[]};
       STATE.ui.modalExtra = {kansId:data.id, kansName:k.name||'', stage:col.dataset.stage};
       renderModal();
     }
+  }
 
-    STATE.ui.dragging = null; STATE.ui.draggingKans = null;
-    STATE.ui.dragOver = null; STATE.ui.dragKansen = false;
+  function dragCleanup() {
+    STATE.ui.dragging = null;
+    STATE.ui.draggingKans = null;
+    STATE.ui.dragOver = null;
+    STATE.ui.dragKansen = false;
+    dragType = null; dragSrcId = null;
     clearDragIndicators();
     render();
+  }
+
+  // ─── HTML5 Drag (desktop) ───
+  document.body.addEventListener('dragstart', e => {
+    const el = e.target.closest('[data-drag-type]');
+    if (!el) return;
+    dragType = el.dataset.dragType;
+    dragSrcId = el.dataset.dragId;
+    e.dataTransfer.setData('text/plain', JSON.stringify({type:dragType, id:dragSrcId}));
+    e.dataTransfer.effectAllowed = 'move';
+    if (dragType === 'match') STATE.ui.dragging = dragSrcId;
+    if (dragType === 'kans') STATE.ui.draggingKans = dragSrcId;
+    setTimeout(() => { el.style.opacity = '0.4'; }, 0);
+  });
+
+  document.body.addEventListener('dragend', e => {
+    const el = e.target.closest('[data-drag-type]');
+    if (el) el.style.opacity = '1';
+    dragCleanup();
+  });
+
+  document.body.addEventListener('dragover', e => {
+    const col = e.target.closest('[data-stage]');
+    const kansenPanel = e.target.closest('#kansen-panel');
+    const panel = e.target.closest('.panel');
+    const dropTarget = findDropTargetAt(e.target);
+    if (col || kansenPanel || panel || dropTarget) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (col && (dragType === 'match' || dragType === 'kans')) {
+        if (STATE.ui.dragOver !== col.dataset.stage) {
+          STATE.ui.dragOver = col.dataset.stage;
+          STATE.ui.dragKansen = false;
+          render();
+        }
+      }
+      if (kansenPanel && dragType === 'match' && !STATE.ui.dragKansen) {
+        STATE.ui.dragKansen = true;
+        STATE.ui.dragOver = null;
+        render();
+      }
+      showIndicatorAt(e.target, e.clientY);
+    }
+  });
+
+  document.body.addEventListener('drop', e => {
+    e.preventDefault();
+    let data;
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    executeDrop(data, e.target, e.clientY);
+    dragCleanup();
+  });
+
+  // ─── Touch Drag (iOS/iPadOS) ───
+  let touchDragEl = null, touchClone = null, touchData = null;
+  let touchStartY = 0, touchScrolling = false;
+
+  document.body.addEventListener('touchstart', e => {
+    const el = e.target.closest('[data-drag-type]');
+    if (!el) return;
+    // Onthoud startpositie om scroll vs drag te onderscheiden
+    touchStartY = e.touches[0].clientY;
+    touchScrolling = false;
+    touchDragEl = el;
+    touchData = {type: el.dataset.dragType, id: el.dataset.dragId};
+  }, {passive: true});
+
+  document.body.addEventListener('touchmove', e => {
+    if (!touchDragEl || !touchData) return;
+    const touch = e.touches[0];
+    const dy = Math.abs(touch.clientY - touchStartY);
+
+    // Wacht tot 10px verplaatsing om te starten (onderscheid scroll vs drag)
+    if (!touchClone && dy < 10) return;
+
+    // Eerste keer: maak clone en start drag
+    if (!touchClone) {
+      touchScrolling = false;
+      e.preventDefault();
+      dragType = touchData.type;
+      dragSrcId = touchData.id;
+      if (dragType === 'match') STATE.ui.dragging = dragSrcId;
+      if (dragType === 'kans') STATE.ui.draggingKans = dragSrcId;
+      touchDragEl.style.opacity = '0.3';
+
+      // Visuele clone
+      touchClone = touchDragEl.cloneNode(true);
+      touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;width:'+touchDragEl.offsetWidth+'px;transform:rotate(2deg);box-shadow:0 8px 24px rgba(0,0,0,0.2);';
+      document.body.appendChild(touchClone);
+    }
+
+    e.preventDefault();
+    touchClone.style.left = (touch.clientX - touchDragEl.offsetWidth/2) + 'px';
+    touchClone.style.top = (touch.clientY - 20) + 'px';
+
+    // Indicator tonen
+    const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (underEl) showIndicatorAt(underEl, touch.clientY);
+  }, {passive: false});
+
+  document.body.addEventListener('touchend', e => {
+    if (!touchDragEl) return;
+
+    if (touchClone) {
+      // Drop uitvoeren
+      const touch = e.changedTouches[0];
+      // Verwijder clone tijdelijk zodat elementFromPoint het onderliggende element vindt
+      touchClone.remove();
+      const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (underEl && touchData) {
+        executeDrop(touchData, underEl, touch.clientY);
+      }
+      touchDragEl.style.opacity = '1';
+      touchClone = null;
+      dragCleanup();
+    }
+
+    touchDragEl = null;
+    touchData = null;
   });
 }
 
