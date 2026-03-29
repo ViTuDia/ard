@@ -1844,7 +1844,7 @@ function setupEventListeners() {
   });
 
   // ─── Drag & Drop (alleen desktop) ───
-  let dragType = null; // houdt bij welk type we slepen
+  let dragType = null, dragSrcId = null; // houdt bij wat we slepen
   document.body.addEventListener('dragstart', e => {
     if (isMob()) { e.preventDefault(); return; }
     const el = e.target.closest('[data-drag-type]');
@@ -1852,6 +1852,7 @@ function setupEventListeners() {
     const type = el.dataset.dragType;
     const dragId = el.dataset.dragId;
     dragType = type;
+    dragSrcId = dragId;
     e.dataTransfer.setData('text/plain', JSON.stringify({type, id:dragId}));
     e.dataTransfer.effectAllowed = 'move';
     if (type === 'match') STATE.ui.dragging = dragId;
@@ -1866,7 +1867,7 @@ function setupEventListeners() {
     STATE.ui.draggingKans = null;
     STATE.ui.dragOver = null;
     STATE.ui.dragKansen = false;
-    dragType = null;
+    dragType = null; dragSrcId = null;
     clearDragIndicators();
     render();
   });
@@ -1922,8 +1923,8 @@ function setupEventListeners() {
         render();
       }
 
-      // Visuele drop-indicator
-      if (dropTarget) {
+      // Visuele drop-indicator — niet tonen op het item zelf
+      if (dropTarget && dropTarget.dataset.dragId !== dragSrcId) {
         const tid = dropTarget.dataset.dragId;
         if (tid !== lastIndicatorId) {
           clearDragIndicators();
@@ -1946,7 +1947,7 @@ function setupEventListeners() {
             }
           }
         }
-      } else if (lastIndicatorId) {
+      } else if (lastIndicatorId || (dropTarget && dropTarget.dataset.dragId === dragSrcId)) {
         clearDragIndicators();
       }
     }
