@@ -51,8 +51,8 @@
     .header-stat-val { font-size: 20px; font-weight: 500; }
     .header-stat-lbl { font-size: 8px; color: var(--headerSub); letter-spacing: 1px; text-transform: uppercase; font-weight: 300; }
 
-    .sel-bar { background: var(--selBg); border-bottom: 1px solid var(--zachtgrijs); padding: 6px 24px; min-height: 34px; display: flex; align-items: center; justify-content: space-between; }
-    .sel-bar-name { font-size: 12px; }
+    .sel-bar { background: var(--selBg); border-bottom: 1px solid var(--zachtgrijs); padding: 10px 24px; min-height: 44px; display: flex; align-items: center; justify-content: space-between; }
+    .sel-bar-name { font-size: 14px; }
     .sel-bar-slash { color: var(--geel); font-weight: 500; }
 
     .left-panels { width: 500px; flex-shrink: 0; display: flex; border-right: 2px solid var(--zachtgrijs); }
@@ -120,8 +120,8 @@
     .cb.checked { background: var(--geel); border-color: var(--geel); color: #000; }
 
     /* Footer — vast onderaan window */
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 6px 24px; border-top: 1px solid var(--zachtgrijs); background: var(--footerBg); display: flex; justify-content: space-between; }
-    .footer span { font-size: 9px; color: var(--grijs); font-weight: 300; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 12px 24px; border-top: 1px solid var(--zachtgrijs); background: var(--footerBg); display: flex; justify-content: space-between; align-items: center; }
+    .footer span { font-size: 12px; color: var(--grijs); font-weight: 300; }
     .pipe-col-body { padding-bottom: 32px; }
 
     /* Mobiele elementen (verborgen op desktop) */
@@ -690,11 +690,11 @@ function renderSelectionBar(c, selName, matches, unmatched) {
     <div style="display:flex;align-items:center;gap:10px">
       ${selName ? `<span class="sel-bar-name"><span class="sel-bar-slash">/ </span>${esc(selName)}</span>` : ''}
     </div>
-    <div style="display:flex;align-items:center;gap:6px" data-noprint>
-      <button class="btn btn-grey btn-sm" style="display:flex;align-items:center;gap:4px" data-action="collapseAll" data-val="${allFolded?'0':'1'}">
-        <span style="font-size:13px">${allFolded?'\u25B8':'\u25BE'}</span> ${allFolded?'Alles uitklappen':'Alles inklappen'}
+    <div style="display:flex;align-items:center;gap:8px" data-noprint>
+      <button class="btn btn-grey" style="display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 14px" data-action="collapseAll" data-val="${allFolded?'0':'1'}">
+        <span style="font-size:14px">${allFolded?'\u25B8':'\u25BE'}</span> ${allFolded?'Alles uitklappen':'Alles inklappen'}
       </button>
-      ${selName ? `<button class="btn btn-grey btn-sm" data-action="clearSelection">\u2715 Reset</button>` : ''}
+      ${selName ? `<button class="btn btn-grey" style="font-size:13px;padding:6px 14px" data-action="clearSelection">\u2715 Reset</button>` : ''}
     </div>
   </div>`;
 }
@@ -1361,10 +1361,7 @@ function renderAdminModal(c) {
       <button class="btn btn-black btn-sm" data-action="changePassword">Wijzig wachtwoord</button>
     </div>
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-        <button class="btn btn-black btn-sm" data-action="closeModal">Sluiten</button>
-      </div>
-      <div style="border-top:1px dashed ${c.zachtgrijs};padding-top:10px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
         <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
       </div>
