@@ -716,7 +716,7 @@ function renderDevsPanel(c, devs, dts, matches) {
   // Per type-groep
   dts.forEach(type => {
     const td = devs.filter(d => d.tid === type.id).sort((a,b) => (a.so||0) - (b.so||0));
-    html += '<div style="margin-bottom:16px">';
+    html += `<div style="margin-bottom:16px" data-devtype-group="${type.id}">`;
     html += `<div class="dev-type-header" draggable="true" data-drag-type="devType" data-drag-id="${type.id}" style="cursor:grab">
       <span style="color:${c.grijs};font-size:10px;cursor:grab;margin-right:2px" data-noprint>\u2261</span>
       <span class="badge badge-lg">${esc(type.short||'?')}</span>
@@ -800,7 +800,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   kcs.forEach(cat => {
     const ck = unmatched.filter(k => k.cid === cat.id).sort((a,b) => (a.so||0) - (b.so||0));
     const allCatFolded = ck.length > 0 && ck.every(k => STATE.ui.collapsedKansen[k.id]);
-    html += '<div style="margin-bottom:16px">';
+    html += `<div style="margin-bottom:16px" data-kanscat-group="${cat.id}">`;
     html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;cursor:grab" draggable="true" data-drag-type="kansCat" data-drag-id="${cat.id}">`;
     html += `<span style="color:${c.grijs};font-size:10px;cursor:grab;margin-right:2px" data-noprint>\u2261</span>`;
     if (ck.length > 0) {
@@ -1875,45 +1875,81 @@ function setupEventListeners() {
   });
 
   // Drop targets + visuele indicator
-  let lastIndicatorTarget = null;
+  let lastIndicatorId = null;
   function clearDragIndicators() {
     document.querySelectorAll('.drag-indicator').forEach(el => el.remove());
-    lastIndicatorTarget = null;
+    lastIndicatorId = null;
+  }
+
+  // Vind het juiste drop-target element op basis van drag-type
+  function findDropTarget(e) {
+    if (!dragType) return null;
+    if (dragType === 'devType') {
+      // Zoek de devtype-groep wrapper
+      const grp = e.target.closest('[data-devtype-group]');
+      if (grp) return grp.querySelector('[data-drag-type="devType"]');
+      return null;
+    }
+    if (dragType === 'kansCat') {
+      const grp = e.target.closest('[data-kanscat-group]');
+      if (grp) return grp.querySelector('[data-drag-type="kansCat"]');
+      return null;
+    }
+    if (dragType === 'match') {
+      return e.target.closest('[data-drag-type="match"]');
+    }
+    return null;
   }
 
   document.body.addEventListener('dragover', e => {
     const col = e.target.closest('[data-stage]');
     const kansenPanel = e.target.closest('#kansen-panel');
-    const draggableTarget = e.target.closest('[data-drag-type]');
-    if (col || kansenPanel || draggableTarget) {
+    const panel = e.target.closest('.panel');
+    const dropTarget = findDropTarget(e);
+
+    if (col || kansenPanel || panel || dropTarget) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      if (col && STATE.ui.dragOver !== col.dataset.stage) {
-        STATE.ui.dragOver = col.dataset.stage;
-        STATE.ui.dragKansen = false;
-        render();
+
+      // Kolom-highlight voor match/kans drag
+      if (col && (dragType === 'match' || dragType === 'kans')) {
+        if (STATE.ui.dragOver !== col.dataset.stage) {
+          STATE.ui.dragOver = col.dataset.stage;
+          STATE.ui.dragKansen = false;
+          render();
+        }
       }
-      if (kansenPanel && !STATE.ui.dragKansen) {
+      if (kansenPanel && dragType === 'match' && !STATE.ui.dragKansen) {
         STATE.ui.dragKansen = true;
         STATE.ui.dragOver = null;
         render();
       }
-      // Visuele drop-indicator — alleen bij zelfde drag-type
-      const matchingTarget = draggableTarget && dragType && draggableTarget.dataset.dragType === dragType
-        ? draggableTarget : null;
-      if (matchingTarget && matchingTarget !== lastIndicatorTarget) {
-        clearDragIndicators();
-        lastIndicatorTarget = matchingTarget;
-        const rect = matchingTarget.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        const indicator = document.createElement('div');
-        indicator.className = 'drag-indicator';
-        if (e.clientY < midY) {
-          matchingTarget.parentNode.insertBefore(indicator, matchingTarget);
-        } else {
-          matchingTarget.parentNode.insertBefore(indicator, matchingTarget.nextSibling);
+
+      // Visuele drop-indicator
+      if (dropTarget) {
+        const tid = dropTarget.dataset.dragId;
+        if (tid !== lastIndicatorId) {
+          clearDragIndicators();
+          lastIndicatorId = tid;
+          // Voor devType/kansCat: indicator op de groep-wrapper
+          const indicatorParent = (dragType === 'devType')
+            ? dropTarget.closest('[data-devtype-group]')
+            : (dragType === 'kansCat')
+            ? dropTarget.closest('[data-kanscat-group]')
+            : dropTarget;
+          if (indicatorParent) {
+            const rect = indicatorParent.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            const indicator = document.createElement('div');
+            indicator.className = 'drag-indicator';
+            if (e.clientY < midY) {
+              indicatorParent.parentNode.insertBefore(indicator, indicatorParent);
+            } else {
+              indicatorParent.parentNode.insertBefore(indicator, indicatorParent.nextSibling);
+            }
+          }
         }
-      } else if (!matchingTarget && lastIndicatorTarget) {
+      } else if (lastIndicatorId) {
         clearDragIndicators();
       }
     }
@@ -1926,11 +1962,12 @@ function setupEventListeners() {
 
     // ─── DevType reorder ───
     if (data.type === 'devType') {
-      const targetHeader = e.target.closest('[data-drag-type="devType"]');
-      if (targetHeader && targetHeader.dataset.dragId !== data.id) {
+      const grp = e.target.closest('[data-devtype-group]');
+      const targetId = grp ? grp.dataset.devtypeGroup : null;
+      if (targetId && targetId !== data.id) {
         const dts = sortedArr(STATE.data.devTypes);
         const fromIdx = dts.findIndex(t => t.id === data.id);
-        const toIdx = dts.findIndex(t => t.id === targetHeader.dataset.dragId);
+        const toIdx = dts.findIndex(t => t.id === targetId);
         if (fromIdx >= 0 && toIdx >= 0) {
           const item = dts.splice(fromIdx, 1)[0];
           dts.splice(toIdx, 0, item);
@@ -1942,11 +1979,12 @@ function setupEventListeners() {
     }
     // ─── KansCat reorder ───
     else if (data.type === 'kansCat') {
-      const targetHeader = e.target.closest('[data-drag-type="kansCat"]');
-      if (targetHeader && targetHeader.dataset.dragId !== data.id) {
+      const grp = e.target.closest('[data-kanscat-group]');
+      const targetId = grp ? grp.dataset.kanscatGroup : null;
+      if (targetId && targetId !== data.id) {
         const kcs = sortedArr(STATE.data.kansCats);
         const fromIdx = kcs.findIndex(c => c.id === data.id);
-        const toIdx = kcs.findIndex(c => c.id === targetHeader.dataset.dragId);
+        const toIdx = kcs.findIndex(c => c.id === targetId);
         if (fromIdx >= 0 && toIdx >= 0) {
           const item = kcs.splice(fromIdx, 1)[0];
           kcs.splice(toIdx, 0, item);
@@ -1975,10 +2013,19 @@ function setupEventListeners() {
         const targetCard = e.target.closest('[data-drag-type="match"]');
         const sm = objToArr(STATE.data.matches).filter(x => x.stage === newStage).sort((a,b) => (a.so||0) - (b.so||0));
         const fromIdx = sm.findIndex(x => x.id === data.id);
-        let toIdx = targetCard ? sm.findIndex(x => x.id === targetCard.dataset.dragId) : sm.length - 1;
-        if (fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx) {
+        let toIdx;
+        if (targetCard && targetCard.dataset.dragId !== data.id) {
+          toIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
+          // Boven of onder het target?
+          const rect = targetCard.getBoundingClientRect();
+          if (e.clientY > rect.top + rect.height / 2) toIdx++;
+        } else {
+          toIdx = sm.length; // naar onderaan
+        }
+        if (fromIdx >= 0 && toIdx >= 0) {
           const item = sm.splice(fromIdx, 1)[0];
           if (toIdx > fromIdx) toIdx--;
+          if (toIdx < 0) toIdx = 0;
           sm.splice(toIdx, 0, item);
           const updates = {};
           sm.forEach((x, i) => { updates[`matches/${x.id}/so`] = i; });
