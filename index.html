@@ -1923,6 +1923,13 @@ function setupEventListeners() {
     if (dragType === 'match') {
       return el.closest('[data-drag-type="match"]');
     }
+    if (dragType === 'kans') {
+      // Kans naar andere categorie: zoek kansCat-groep
+      const grp = el.closest('[data-kanscat-group]');
+      if (grp) return grp.querySelector('[data-drag-type="kansCat"]');
+      // Kans naar pipeline: wordt afgehandeld via col in executeDrop
+      return null;
+    }
     return null;
   }
 
@@ -1936,7 +1943,7 @@ function setupEventListeners() {
         lastIndicatorId = tid;
         const indicatorParent = (dragType === 'devType')
           ? dropTarget.closest('[data-devtype-group]')
-          : (dragType === 'kansCat')
+          : (dragType === 'kansCat' || dragType === 'kans')
           ? dropTarget.closest('[data-kanscat-group]')
           : dropTarget;
         if (indicatorParent) {
@@ -2005,6 +2012,19 @@ function setupEventListeners() {
         }
       }
       return;
+    }
+
+    // Kans naar andere categorie
+    if (data.type === 'kans') {
+      const grp = targetEl.closest('[data-kanscat-group]');
+      if (grp) {
+        const newCid = grp.dataset.kanscatGroup;
+        const kans = STATE.data.kansen[data.id];
+        if (kans && kans.cid !== newCid) {
+          fbUpdate(`kansen/${data.id}`, {cid: newCid, updatedAt: today()});
+        }
+        return;
+      }
     }
 
     const col = targetEl.closest('[data-stage]');
