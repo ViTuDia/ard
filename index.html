@@ -674,10 +674,10 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      <button data-noprint class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:11px;padding:6px 12px" data-action="showAlerts">\u26A0 ${al} alert${al!==1?'s':''}</button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px;width:38px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px" data-action="print">Print</button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px" data-action="showAdmin">\u2699</button>
+      <button data-noprint class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:12px;padding:6px 12px" data-action="showAlerts"><span style="font-size:16px;vertical-align:middle">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="print"><span style="font-size:16px;vertical-align:middle">\uD83D\uDDA8</span></button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="showAdmin">\u2699</button>
     </div>
   </div>`;
 }
@@ -1965,13 +1965,19 @@ function setupEventListeners() {
       if (targetId && targetId !== data.id) {
         const dts = sortedArr(STATE.data.devTypes);
         const fromIdx = dts.findIndex(t => t.id === data.id);
-        const toIdx = dts.findIndex(t => t.id === targetId);
-        if (fromIdx >= 0 && toIdx >= 0) {
-          const item = dts.splice(fromIdx, 1)[0];
-          dts.splice(toIdx, 0, item);
-          const updates = {};
-          dts.forEach((t, i) => { updates[`devTypes/${t.id}/so`] = i; });
-          fbMulti(updates);
+        const targetIdx = dts.findIndex(t => t.id === targetId);
+        if (fromIdx >= 0 && targetIdx >= 0) {
+          const rect = grp.getBoundingClientRect();
+          const insertAfter = e.clientY > rect.top + rect.height / 2;
+          let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+          if (fromIdx < toIdx) toIdx--;
+          if (fromIdx !== toIdx) {
+            const item = dts.splice(fromIdx, 1)[0];
+            dts.splice(toIdx, 0, item);
+            const updates = {};
+            dts.forEach((t, i) => { updates[`devTypes/${t.id}/so`] = i; });
+            fbMulti(updates);
+          }
         }
       }
     }
@@ -1982,13 +1988,19 @@ function setupEventListeners() {
       if (targetId && targetId !== data.id) {
         const kcs = sortedArr(STATE.data.kansCats);
         const fromIdx = kcs.findIndex(c => c.id === data.id);
-        const toIdx = kcs.findIndex(c => c.id === targetId);
-        if (fromIdx >= 0 && toIdx >= 0) {
-          const item = kcs.splice(fromIdx, 1)[0];
-          kcs.splice(toIdx, 0, item);
-          const updates = {};
-          kcs.forEach((c, i) => { updates[`kansCats/${c.id}/so`] = i; });
-          fbMulti(updates);
+        const targetIdx = kcs.findIndex(c => c.id === targetId);
+        if (fromIdx >= 0 && targetIdx >= 0) {
+          const rect = grp.getBoundingClientRect();
+          const insertAfter = e.clientY > rect.top + rect.height / 2;
+          let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+          if (fromIdx < toIdx) toIdx--;
+          if (fromIdx !== toIdx) {
+            const item = kcs.splice(fromIdx, 1)[0];
+            kcs.splice(toIdx, 0, item);
+            const updates = {};
+            kcs.forEach((c, i) => { updates[`kansCats/${c.id}/so`] = i; });
+            fbMulti(updates);
+          }
         }
       }
     }
@@ -2007,28 +2019,25 @@ function setupEventListeners() {
       const newStage = col.dataset.stage;
       const m = STATE.data.matches[data.id]; if (!m) return;
       if (m.stage === newStage) {
-        // Reorder binnen kolom — insert bij drop-positie
+        // Reorder binnen kolom — alleen als positie verandert
         const targetCard = e.target.closest('[data-drag-type="match"]');
+        if (!targetCard || targetCard.dataset.dragId === data.id) break; // drop op zelf of lege ruimte → niets doen
         const sm = objToArr(STATE.data.matches).filter(x => x.stage === newStage).sort((a,b) => (a.so||0) - (b.so||0));
         const fromIdx = sm.findIndex(x => x.id === data.id);
-        let toIdx;
-        if (targetCard && targetCard.dataset.dragId !== data.id) {
-          toIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
-          // Boven of onder het target?
-          const rect = targetCard.getBoundingClientRect();
-          if (e.clientY > rect.top + rect.height / 2) toIdx++;
-        } else {
-          toIdx = sm.length; // naar onderaan
-        }
-        if (fromIdx >= 0 && toIdx >= 0) {
-          const item = sm.splice(fromIdx, 1)[0];
-          if (toIdx > fromIdx) toIdx--;
-          if (toIdx < 0) toIdx = 0;
-          sm.splice(toIdx, 0, item);
-          const updates = {};
-          sm.forEach((x, i) => { updates[`matches/${x.id}/so`] = i; });
-          fbMulti(updates);
-        }
+        const targetIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
+        if (fromIdx < 0 || targetIdx < 0) break;
+        // Boven of onder het target?
+        const rect = targetCard.getBoundingClientRect();
+        const insertAfter = e.clientY > rect.top + rect.height / 2;
+        let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+        // Corrigeer als bron vóór target zat
+        if (fromIdx < toIdx) toIdx--;
+        if (fromIdx === toIdx) break; // geen verandering
+        const item = sm.splice(fromIdx, 1)[0];
+        sm.splice(toIdx, 0, item);
+        const updates = {};
+        sm.forEach((x, i) => { updates[`matches/${x.id}/so`] = i; });
+        fbMulti(updates);
       } else {
         const oldIdx = STAGE_ORDER[m.stage] || 0;
         const newIdx = STAGE_ORDER[newStage] || 0;
