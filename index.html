@@ -274,7 +274,7 @@
       <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
       <button onclick="KB.handleLogin()">Openen</button>
       <div id="login-error"></div>
-      <button onclick="document.getElementById('login-mode').style.display='none';document.getElementById('setup-mode').style.display='flex';document.getElementById('setup-pw1').focus();" style="margin-top:24px;background:none;border:1px solid #333;color:#888;padding:8px 20px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px">Wachtwoord instellen / resetten</button>
+      <button onclick="showSetupMode()" style="margin-top:24px;background:none;border:1px solid #333;color:#888;padding:8px 20px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px">Wachtwoord instellen / resetten</button>
     </div>
     <!-- Setup-modus -->
     <div id="setup-mode" style="display:none;flex-direction:column;align-items:center">
@@ -283,7 +283,7 @@
       <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
       <button onclick="KB.handleSetup()">Instellen</button>
       <div id="setup-error"></div>
-      <button onclick="document.getElementById('setup-mode').style.display='none';document.getElementById('login-mode').style.display='flex';document.getElementById('login-pw').focus();" style="margin-top:16px;background:none;border:none;color:#666;cursor:pointer;font-family:inherit;font-size:11px">Terug naar inloggen</button>
+      <button onclick="showLoginMode()" style="margin-top:16px;background:none;border:none;color:#666;cursor:pointer;font-family:inherit;font-size:11px">Terug naar inloggen</button>
     </div>
   </div>
 
@@ -481,30 +481,27 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-// Check of er al een wachtwoord is ingesteld
 function showSetupMode() {
-  const lm = document.getElementById('login-mode');
+  document.getElementById('login-mode').style.display = 'none';
   const sm = document.getElementById('setup-mode');
-  if (lm) lm.style.display = 'none';
-  if (sm) { sm.style.display = 'flex'; sm.style.flexDirection = 'column'; sm.style.alignItems = 'center'; }
-  const pw1 = document.getElementById('setup-pw1');
-  if (pw1) pw1.focus();
+  sm.style.display = 'flex';
+  sm.style.flexDirection = 'column';
+  sm.style.alignItems = 'center';
 }
 
-KB.checkSetup = async function() {
-  try {
-    if (!db) initFirebase();
-    const snap = await db.ref('meta/passwordHash').once('value');
-    const val = snap.val();
-    if (!val || (typeof val === 'string' && val.trim() === '')) {
-      showSetupMode();
-    }
-  } catch(e) {
-    // Bij permissions-fout: toon setup-mode als fallback zodat gebruiker een wachtwoord kan instellen
-    showSetupMode();
-    document.getElementById('setup-error').textContent = 'Let op: ' + e.message;
-  }
-};
+function showLoginMode() {
+  document.getElementById('setup-mode').style.display = 'none';
+  document.getElementById('login-mode').style.display = 'flex';
+}
+
+function enterApp() {
+  localStorage.setItem('kb_session', '1');
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  applyTheme();
+  setupListeners();
+  setupEventListeners();
+}
 
 KB.handleSetup = async function() {
   const pw1 = document.getElementById('setup-pw1').value.trim();
@@ -520,12 +517,7 @@ KB.handleSetup = async function() {
     if (!db) initFirebase();
     const hashed = await hashPassword(pw1);
     await db.ref('meta/passwordHash').set(hashed);
-    localStorage.setItem('kb_session', '1');
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    applyTheme();
-    setupListeners();
-    setupEventListeners();
+    enterApp();
   } catch(e) {
     errEl.style.color = '';
     errEl.textContent = 'Fout: ' + e.message;
@@ -540,18 +532,13 @@ KB.handleLogin = async function() {
     if (!db) initFirebase();
     const snap = await db.ref('meta/passwordHash').once('value');
     const stored = snap.val();
-    if (!stored || (typeof stored === 'string' && stored.trim() === '')) {
+    if (!stored) {
       showSetupMode();
       return;
     }
     const hashed = await hashPassword(pw);
     if (hashed === stored) {
-      localStorage.setItem('kb_session', '1');
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      applyTheme();
-      setupListeners();
-      setupEventListeners();
+      enterApp();
     } else {
       document.getElementById('login-error').textContent = 'Onjuist wachtwoord.';
     }
@@ -2081,31 +2068,10 @@ function setupEventListeners() {
 }
 
 // ─── INIT ────────────────────────────────────────
-(async function init() {
+(function init() {
   initFirebase();
   if (localStorage.getItem('kb_session') === '1') {
-    // Sessie aanwezig — check of wachtwoord nog bestaat
-    try {
-      const snap = await db.ref('meta/passwordHash').once('value');
-      const val = snap.val();
-      if (!val || (typeof val === 'string' && val.trim() === '')) {
-        // Wachtwoord is weg → terug naar setup
-        localStorage.removeItem('kb_session');
-        showSetupMode();
-      } else {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        applyTheme();
-        setupListeners();
-        setupEventListeners();
-      }
-    } catch(e) {
-      // Fout bij check → toon login zodat gebruiker het kan proberen
-      localStorage.removeItem('kb_session');
-      document.getElementById('login-error').textContent = 'Sessie verlopen. Log opnieuw in.';
-    }
-  } else {
-    KB.checkSetup();
+    enterApp();
   }
   // Enter-toets op login
   document.getElementById('login-pw').addEventListener('keydown', e => {
