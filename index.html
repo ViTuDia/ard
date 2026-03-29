@@ -245,7 +245,7 @@
       }
 
       /* Verberg drag-gerelateerde elementen op mobiel */
-      [draggable="true"] { -webkit-user-drag: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: pan-x; }
+      [draggable="true"] { -webkit-user-drag: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       .drop-zone-active { display: none; }
 
       /* iOS Safari: cursor:pointer nodig voor click-delegatie op niet-native elementen */
@@ -2144,46 +2144,58 @@ function setupEventListeners() {
   });
 
   // ─── Touch Drag (iOS/iPadOS) ───
+  // Lang indrukken (200ms) = drag, snel vegen = scroll
   let touchDragEl = null, touchClone = null, touchData = null;
-  let touchStartY = 0, touchScrolling = false;
+  let touchHoldTimer = null, touchReady = false;
+
+  function touchCancel() {
+    clearTimeout(touchHoldTimer);
+    if (touchDragEl) touchDragEl.style.opacity = '1';
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    touchDragEl = null; touchData = null; touchReady = false; touchHoldTimer = null;
+    dragCleanup();
+  }
 
   document.body.addEventListener('touchstart', e => {
     const el = e.target.closest('[data-drag-type]');
     if (!el) return;
-    // Onthoud startpositie om scroll vs drag te onderscheiden
-    touchStartY = e.touches[0].clientY;
-    touchScrolling = false;
     touchDragEl = el;
     touchData = {type: el.dataset.dragType, id: el.dataset.dragId};
-  }, {passive: true});
-
-  document.body.addEventListener('touchmove', e => {
-    if (!touchDragEl || !touchData) return;
-    const touch = e.touches[0];
-    const dy = Math.abs(touch.clientY - touchStartY);
-
-    // Wacht tot 5px verplaatsing om te starten (onderscheid tik vs drag)
-    if (!touchClone && dy < 5) return;
-
-    // Eerste keer: maak clone en start drag
-    if (!touchClone) {
-      touchScrolling = false;
-      e.preventDefault();
-      // Wis tekstselectie
+    touchReady = false;
+    // Na 200ms vasthouden: drag activeren
+    touchHoldTimer = setTimeout(() => {
+      touchReady = true;
       if (window.getSelection) window.getSelection().removeAllRanges();
       dragType = touchData.type;
       dragSrcId = touchData.id;
       if (dragType === 'match') STATE.ui.dragging = dragSrcId;
       if (dragType === 'kans') STATE.ui.draggingKans = dragSrcId;
       touchDragEl.style.opacity = '0.3';
+    }, 200);
+  }, {passive: true});
 
-      // Visuele clone
+  document.body.addEventListener('touchmove', e => {
+    if (!touchDragEl || !touchData) return;
+
+    // Nog niet lang genoeg vastgehouden → annuleer, laat scrollen
+    if (!touchReady && !touchClone) {
+      clearTimeout(touchHoldTimer);
+      touchDragEl = null; touchData = null;
+      return;
+    }
+
+    // Drag is actief → blokkeer scroll
+    e.preventDefault();
+
+    const touch = e.touches[0];
+
+    // Eerste keer clone maken
+    if (!touchClone) {
       touchClone = touchDragEl.cloneNode(true);
       touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;width:'+touchDragEl.offsetWidth+'px;transform:rotate(2deg);box-shadow:0 8px 24px rgba(0,0,0,0.2);';
       document.body.appendChild(touchClone);
     }
 
-    e.preventDefault();
     touchClone.style.left = (touch.clientX - touchDragEl.offsetWidth/2) + 'px';
     touchClone.style.top = (touch.clientY - 20) + 'px';
 
@@ -2193,24 +2205,21 @@ function setupEventListeners() {
   }, {passive: false});
 
   document.body.addEventListener('touchend', e => {
+    clearTimeout(touchHoldTimer);
     if (!touchDragEl) return;
 
     if (touchClone) {
-      // Drop uitvoeren
       const touch = e.changedTouches[0];
-      // Verwijder clone tijdelijk zodat elementFromPoint het onderliggende element vindt
       touchClone.remove();
       const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
       if (underEl && touchData) {
         executeDrop(touchData, underEl, touch.clientY);
       }
-      touchDragEl.style.opacity = '1';
       touchClone = null;
-      dragCleanup();
     }
-
-    touchDragEl = null;
-    touchData = null;
+    if (touchDragEl) touchDragEl.style.opacity = '1';
+    touchDragEl = null; touchData = null; touchReady = false;
+    dragCleanup();
   });
 }
 
