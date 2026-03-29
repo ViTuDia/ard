@@ -49,31 +49,9 @@ Via de Firebase Console kun je begindata toevoegen:
 
 ### Ontwikkelaar-types (`devTypes`)
 
-```json
-{
-  "t1": {"label": "Puur sang", "short": "PS", "so": 0},
-  "t2": {"label": "Ontw. bouwer", "short": "OB", "so": 1},
-  "t3": {"label": "Investeerder", "short": "IN", "so": 2},
-  "t4": {"label": "Gebiedsontwikkelaar", "short": "GO", "so": 3},
-  "t5": {"label": "CPO / Zelfbouw", "short": "CP", "so": 4}
-}
-```
 
 ### Kans-categorieeen (`kansCats`)
 
-```json
-{
-  "c1": {"label": "Rotterdam", "so": 0},
-  "c2": {"label": "Schiedam", "so": 1},
-  "c3": {"label": "Vlaardingen", "so": 2}
-}
-```
 
 ### Gebruikers (`users`)
 
-```json
-{
-  "u1": {"name": "Vincent", "short": "VT", "so": 0},
-  "u2": {"name": "Gideon", "short": "GP", "so": 1}
-}
-```
