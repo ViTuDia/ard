@@ -522,15 +522,30 @@ function enterApp() {
   setupEventListeners();
 }
 
-// Bij opstarten: check of er een hash in Firebase staat (met timeout)
+// Bij opstarten: check of er een hash in Firebase staat
 KB.checkInitialState = async function() {
+  // Harde fallback: als na 4 seconden niets getoond is, forceer setup-scherm
+  let resolved = false;
+  const fallbackTimer = setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
+      showPanel('setup-mode');
+      document.getElementById('setup-error').textContent = 'Firebase reageert niet. Controleer je verbinding.';
+    }
+  }, 4000);
+
   try {
     if (!db) initFirebase();
-    if (!db) { showPanel('setup-mode'); return; }
-    // Timeout: als Firebase niet reageert binnen 5s, toon setup
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
-    const fbCheck = db.ref('meta/passwordHash').once('value');
-    const snap = await Promise.race([fbCheck, timeout]);
+    if (!db) {
+      clearTimeout(fallbackTimer); resolved = true;
+      showPanel('setup-mode');
+      document.getElementById('setup-error').textContent = 'Kan Firebase niet initialiseren.';
+      return;
+    }
+    const snap = await db.ref('meta/passwordHash').once('value');
+    clearTimeout(fallbackTimer);
+    if (resolved) return; // fallback heeft al overgenomen
+    resolved = true;
     const val = snap.val();
     if (!val) {
       showPanel('setup-mode');
@@ -539,14 +554,11 @@ KB.checkInitialState = async function() {
       document.getElementById('login-pw').focus();
     }
   } catch(e) {
-    if (e.message === 'timeout') {
-      // Firebase reageert niet — toon setup zodat gebruiker kan beginnen
-      showPanel('setup-mode');
-      document.getElementById('setup-error').textContent = 'Kan Firebase niet bereiken. Controleer je internetverbinding.';
-    } else {
-      showPanel('login-mode');
-      document.getElementById('login-error').textContent = 'Verbindingsfout: ' + e.message;
-    }
+    clearTimeout(fallbackTimer);
+    if (resolved) return;
+    resolved = true;
+    showPanel('login-mode');
+    document.getElementById('login-error').textContent = 'Fout: ' + e.message;
   }
 };
 
