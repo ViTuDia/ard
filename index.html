@@ -116,6 +116,20 @@
     .field input, .field select, .field textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--inputBorder); border-radius: 3px; font-family: inherit; color: var(--txtPrimary); background: var(--kaart); }
     .field textarea { min-height: 50px; resize: vertical; }
 
+    /* Toast melding */
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 12px; font-weight: 500; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+
+    /* Firebase verbindingsindicator */
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+
+    /* Zoekbalk in panelen */
+    .panel-search { width: 100%; padding: 6px 8px; font-size: 11px; border: 1px solid var(--inputBorder); border-radius: 3px; font-family: inherit; color: var(--txtPrimary); background: var(--kaart); margin-bottom: 8px; }
+    .panel-search:focus { outline: none; border-color: var(--geel); }
+
+    /* Lege kolom boodschap */
+    .empty-col-msg { text-align: center; padding: 20px 10px; color: var(--grijs); font-size: 11px; font-weight: 300; font-style: italic; }
+
     /* Checkbox */
     .cb { width: 16px; height: 16px; border-radius: 2px; border: 2px solid var(--zachtgrijs); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
     .cb.checked { background: var(--geel); border-color: var(--geel); color: #000; }
@@ -300,16 +314,17 @@
   <div id="app">
     <div id="board-container"></div>
     <div id="modal-container"></div>
+    <div id="toast" class="toast"></div>
     <!-- Mobiele tab-balk -->
     <div class="mob-tabs" data-noprint>
       <button class="mob-tab active" data-tab="devs" onclick="KB.mobSwitch('devs')">
-        <span class="mob-tab-icon">&#128101;</span>Devs
+        <span class="mob-tab-icon">&#128101;</span><span class="mob-tab-label" data-tab-label="devs">Devs</span>
       </button>
       <button class="mob-tab" data-tab="kansen" onclick="KB.mobSwitch('kansen')">
-        <span class="mob-tab-icon">&#127919;</span>Kansen
+        <span class="mob-tab-icon">&#127919;</span><span class="mob-tab-label" data-tab-label="kansen">Kansen</span>
       </button>
       <button class="mob-tab" data-tab="pipeline" onclick="KB.mobSwitch('pipeline')">
-        <span class="mob-tab-icon">&#128202;</span>Pipeline
+        <span class="mob-tab-icon">&#128202;</span><span class="mob-tab-label" data-tab-label="pipeline">Pipeline</span>
       </button>
     </div>
   </div>
@@ -379,6 +394,8 @@ const STATE = {
     dragging: null, draggingKans: null, dragOver: null, dragKansen: false,
     modal: null, modalData: null, modalExtra: null,
     mobTab: 'devs', mobStage: 'matches',
+    searchDevs: '', searchKansen: '',
+    connected: true, modalDirty: false,
   }
 };
 
@@ -520,6 +537,7 @@ function enterApp() {
   applyTheme();
   setupListeners();
   setupEventListeners();
+  setupConnectionMonitor();
 }
 
 // Bij opstarten: check of er een hash in Firebase staat
@@ -561,6 +579,29 @@ KB.checkInitialState = async function() {
     document.getElementById('login-error').textContent = 'Fout: ' + e.message;
   }
 };
+
+// ─── TOAST ──────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ─── FIREBASE VERBINDING ────────────────────────
+function setupConnectionMonitor() {
+  if (!db) return;
+  db.ref('.info/connected').on('value', snap => {
+    STATE.ui.connected = !!snap.val();
+    render();
+  });
+}
+
+// ─── HAPTIC FEEDBACK ────────────────────────────
+function haptic() {
+  if (navigator.vibrate) navigator.vibrate(30);
+}
 
 KB.handleSetup = async function() {
   const pw1 = document.getElementById('setup-pw1').value.trim();
@@ -659,9 +700,22 @@ function render() {
   html += '</div>';
   html += renderFooter(c);
 
+  // Bewaar zoekbalk focus
+  const ae = document.activeElement;
+  const searchFocusId = ae && ae.classList.contains('panel-search') ? ae.oninput?.toString() : null;
+
   document.getElementById('board-container').innerHTML = html;
   renderModal();
   updateMobView();
+
+  // Herstel zoekbalk focus
+  if (STATE.ui.searchDevs || STATE.ui.searchKansen) {
+    const searches = document.querySelectorAll('.panel-search');
+    searches.forEach(s => {
+      if (STATE.ui.searchDevs && s.value === STATE.ui.searchDevs) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+      if (STATE.ui.searchKansen && s.value === STATE.ui.searchKansen) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+    });
+  }
 }
 
 // Mobiele view helper: body-klasse en tab-balk sync
@@ -686,6 +740,15 @@ function updateMobView() {
       t.classList.toggle('active', t.dataset.stage === STATE.ui.mobStage);
     });
   }
+  // Tellers in tab-balk
+  const devCnt = objToArr(STATE.data.devs).length;
+  const kansCnt = unmatchedKansen().length;
+  const matchCnt = objToArr(STATE.data.matches).length;
+  document.querySelectorAll('.mob-tab-label').forEach(l => {
+    if (l.dataset.tabLabel === 'devs') l.textContent = `Devs (${devCnt})`;
+    if (l.dataset.tabLabel === 'kansen') l.textContent = `Kansen (${kansCnt})`;
+    if (l.dataset.tabLabel === 'pipeline') l.textContent = `Pipeline (${matchCnt})`;
+  });
 }
 
 // Mobiele functies (direct onclick, geen delegatie — iOS Safari compatibel)
@@ -727,6 +790,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div><div class="header-title-label">Acquisitie</div><div class="header-title-name">De Koppelbaas</div></div>
     </div>
     <div class="header-right">
+      <span class="conn-dot" title="${STATE.ui.connected?'Verbonden met Firebase':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'}"></span>
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
@@ -768,10 +832,12 @@ function renderDevsPanel(c, devs, dts, matches) {
   html += '<div class="panel-header"><span class="panel-title">Ontwikkelaars</span>';
   html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
   html += '<div class="panel-sub">Klik om koppelingen te zien.</div>';
+  html += `<input class="panel-search" placeholder="\uD83D\uDD0D Zoek ontwikkelaar..." value="${esc(STATE.ui.searchDevs)}" oninput="STATE.ui.searchDevs=this.value;render();" data-noprint>`;
 
   // Per type-groep
   dts.forEach(type => {
-    const td = devs.filter(d => d.tid === type.id).sort((a,b) => (a.so||0) - (b.so||0));
+    const searchD = STATE.ui.searchDevs.toLowerCase();
+    const td = devs.filter(d => d.tid === type.id && (!searchD || (d.name||'').toLowerCase().includes(searchD) || (d.schaal||'').toLowerCase().includes(searchD))).sort((a,b) => (a.so||0) - (b.so||0));
     html += `<div style="margin-bottom:16px" data-devtype-group="${type.id}">`;
     html += `<div class="dev-type-header" draggable="true" data-drag-type="devType" data-drag-id="${type.id}" style="cursor:grab">
       <span style="color:${c.grijs};font-size:10px;cursor:grab;margin-right:2px" data-noprint>\u2261</span>
@@ -847,6 +913,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   html += '</div>';
   html += '<button data-noprint title="Nieuwe kans toevoegen" class="btn btn-black btn-sm" data-action="addKans">+ Nieuw</button></div>';
   html += `<div class="panel-sub">${dragKansen ? '<span style="color:'+c.geel+';font-weight:500">Loslaten = match ontkoppelen</span>' : 'Koppel aan ontwikkelaar \u2192 match.'}</div>`;
+  html += `<input class="panel-search" placeholder="\uD83D\uDD0D Zoek kans..." value="${esc(STATE.ui.searchKansen)}" oninput="STATE.ui.searchKansen=this.value;render();" data-noprint>`;
 
   if (dragKansen) {
     html += '<div class="drop-zone-active">Hier loslaten</div>';
@@ -854,7 +921,8 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
 
   // Per categorie
   kcs.forEach(cat => {
-    const ck = unmatched.filter(k => k.cid === cat.id).sort((a,b) => (a.so||0) - (b.so||0));
+    const searchK = STATE.ui.searchKansen.toLowerCase();
+    const ck = unmatched.filter(k => k.cid === cat.id && (!searchK || (k.name||'').toLowerCase().includes(searchK) || (k.adres||'').toLowerCase().includes(searchK) || (k.type||'').toLowerCase().includes(searchK))).sort((a,b) => (a.so||0) - (b.so||0));
     const allCatFolded = ck.length > 0 && ck.every(k => STATE.ui.collapsedKansen[k.id]);
     html += `<div style="margin-bottom:16px" data-kanscat-group="${cat.id}">`;
     html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;cursor:grab" draggable="true" data-drag-type="kansCat" data-drag-id="${cat.id}">`;
@@ -971,6 +1039,9 @@ function renderPipeline(c, matches, kansen, devs, dts) {
       html += renderMatchCard(c, match, stage, devs, dts);
     });
 
+    if (sm.length === 0) {
+      html += `<div class="empty-col-msg">Nog geen matches.<br>Sleep een kans hierheen${stage.addLabel ? ' of klik +' : ''}.</div>`;
+    }
     // Toevoeg-knop
     if (stage.addLabel) {
       html += `<button data-noprint title="Nieuwe match toevoegen in ${esc(stage.label)}" class="btn-add-col" data-action="addMatch" data-stage="${stage.id}">${esc(stage.addLabel)}</button>`;
@@ -1428,6 +1499,7 @@ function renderAdminModal(c) {
 KB.mf = function(field, value) {
   if (STATE.ui.modalData) {
     STATE.ui.modalData[field] = value;
+    STATE.ui.modalDirty = true;
     // Herrender modal alleen als het een veld is dat de knop-status beïnvloedt
     if (['label','short','checked'].includes(field)) {
       // Bewaar actief element + cursor positie voor focus-herstel
@@ -1471,6 +1543,60 @@ KB.mfStage = function(newStage) {
 
 // ─── EVENTS (placeholder) ────────────────────────
 function setupEventListeners() {
+  // ─── Escape sluit modals ───
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && STATE.ui.modal) {
+      if (STATE.ui.modalDirty) {
+        if (!confirm('Wijzigingen niet opgeslagen. Sluiten?')) return;
+      }
+      STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+      STATE.ui.modalDirty = false;
+      renderModal();
+    }
+  });
+
+  // ─── Dubbelklik = bewerken ───
+  document.body.addEventListener('dblclick', e => {
+    const devItem = e.target.closest('[data-action="selectDev"]');
+    if (devItem) {
+      const id = devItem.dataset.id;
+      const dev = STATE.data.devs[id];
+      if (dev) { STATE.ui.modal = 'editDev'; STATE.ui.modalData = {...dev, id}; STATE.ui.modalExtra = null; STATE.ui.modalDirty = false; renderModal(); }
+      return;
+    }
+    const kansItem = e.target.closest('[data-action="toggleKansCollapse"]');
+    if (kansItem) {
+      const id = kansItem.dataset.id;
+      const k = STATE.data.kansen[id];
+      if (k) { STATE.ui.modal = 'editKans'; STATE.ui.modalData = {...k, id}; STATE.ui.modalExtra = null; STATE.ui.modalDirty = false; renderModal(); }
+      return;
+    }
+  });
+
+  // ─── Mobiel: swipe tussen tabs ───
+  let swipeStartX = 0, swipeStartY = 0;
+  const MOB_TABS_ORDER = ['devs','kansen','pipeline'];
+  document.body.addEventListener('touchstart', e => {
+    if (!isMob()) return;
+    // Niet swipen als er een drag bezig is
+    if (touchDragEl) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+  }, {passive: true});
+  document.body.addEventListener('touchend', e => {
+    if (!isMob() || touchDragEl) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+    if (Math.abs(dx) > 80 && dy < 60) {
+      const curIdx = MOB_TABS_ORDER.indexOf(STATE.ui.mobTab);
+      if (dx < 0 && curIdx < MOB_TABS_ORDER.length - 1) {
+        KB.mobSwitch(MOB_TABS_ORDER[curIdx + 1]);
+      } else if (dx > 0 && curIdx > 0) {
+        KB.mobSwitch(MOB_TABS_ORDER[curIdx - 1]);
+      }
+    }
+  }, {passive: true});
+
   // ─── Click delegation ───
   document.body.addEventListener('click', e => {
     const el = e.target.closest('[data-action]');
@@ -1596,7 +1722,7 @@ function setupEventListeners() {
         } else {
           fbUpdate(`devs/${d.id}`, {name:d.name||'',tid:d.tid||'',schaal:d.schaal||'',contact:d.contact||'',notitie:d.notitie||'',updatedAt:today()});
         }
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteDev': {
         const dev = STATE.data.devs[id];
@@ -1623,7 +1749,7 @@ function setupEventListeners() {
         } else {
           fbUpdate(`kansen/${k.id}`, {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',updatedAt:today()});
         }
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteKans': {
         const k = STATE.data.kansen[id];
@@ -1693,7 +1819,7 @@ function setupEventListeners() {
           upd.so = objToArr(STATE.data.matches).filter(m => m.stage === md.stage).length;
         }
         fbUpdate(`matches/${md.id}`, upd);
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteMatch':
         STATE.ui.modal = 'confirmDelete';
@@ -1751,7 +1877,7 @@ function setupEventListeners() {
         const coals = JSON.parse(JSON.stringify(m.coals||[]));
         if (editing && cidx !== null) coals[cidx] = devIds; else coals.push(devIds);
         fbUpdate(`matches/${mid}`, {coals, updatedAt:today()});
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Coalitie opgeslagen'); break;
       }
       case 'deleteCoalition': {
         const mid = el.dataset.mid;
@@ -1773,12 +1899,12 @@ function setupEventListeners() {
       case 'saveNewDevType': {
         const d = STATE.ui.modalData; if (!d || !d.label) break;
         fbPush('devTypes', {label:d.label, short:(d.short||'').toUpperCase(), so:objToArr(STATE.data.devTypes).length});
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Categorie aangemaakt'); break;
       }
       case 'saveDevType': {
         const d = STATE.ui.modalData; if (!d) break;
         fbUpdate(`devTypes/${d.id}`, {label:d.label||'', short:(d.short||'').toUpperCase(), updatedAt:today()});
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteDevType':
         STATE.ui.modal = 'confirmDelete'; STATE.ui.modalExtra = {type:'devType',id};
@@ -1794,12 +1920,12 @@ function setupEventListeners() {
       case 'saveNewKansCat': {
         const d = STATE.ui.modalData; if (!d || !d.label) break;
         fbPush('kansCats', {label:d.label, so:objToArr(STATE.data.kansCats).length});
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Categorie aangemaakt'); break;
       }
       case 'saveKansCat': {
         const d = STATE.ui.modalData; if (!d) break;
         fbUpdate(`kansCats/${d.id}`, {label:d.label||'', updatedAt:today()});
-        STATE.ui.modal = null; renderModal(); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteKansCat':
         STATE.ui.modal = 'confirmDelete'; STATE.ui.modalExtra = {type:'kansCat',id};
@@ -1893,7 +2019,9 @@ function setupEventListeners() {
       // Modal sluiten
       case 'modalBody': break; // absorbeert clicks op lege modal-ruimte
       case 'closeModal':
+        if (STATE.ui.modalDirty && !confirm('Wijzigingen niet opgeslagen. Sluiten?')) break;
         STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+        STATE.ui.modalDirty = false;
         renderModal(); break;
 
     }
@@ -2165,6 +2293,7 @@ function setupEventListeners() {
     // Na 200ms vasthouden: drag activeren
     touchHoldTimer = setTimeout(() => {
       touchReady = true;
+      haptic();
       if (window.getSelection) window.getSelection().removeAllRanges();
       dragType = touchData.type;
       dragSrcId = touchData.id;
