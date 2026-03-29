@@ -30,6 +30,7 @@
     #login-screen .logo-sub { font-size: 10px; font-weight: 300; letter-spacing: 3px; color: #ffffff66; margin-top: 4px; }
     #login-screen input { width: 260px; padding: 10px 14px; font-size: 14px; border: 1px solid #333; border-radius: 4px; background: #111; color: #fff; font-family: inherit; text-align: center; }
     #login-screen input:focus { outline: none; border-color: var(--geel); }
+    #login-screen input::placeholder { color: #555; }
     #login-screen button { margin-top: 10px; padding: 10px 32px; font-size: 13px; font-weight: 500; background: var(--geel); color: #000; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
     #login-error { color: var(--rood); font-size: 12px; margin-top: 8px; min-height: 18px; }
     #login-screen .login-setup-msg { color: #ffffff88; font-size: 11px; margin-bottom: 12px; max-width: 260px; text-align: center; line-height: 1.5; }
@@ -675,10 +676,10 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      <button data-noprint class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:12px;padding:6px 12px" data-action="showAlerts"><span style="font-size:16px;vertical-align:middle">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="print"><span style="font-size:16px;vertical-align:middle">\uD83D\uDDA8</span></button>
-      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="showAdmin">\u2699</button>
+      <button data-noprint title="Bekijk alerts" class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:12px;padding:6px 12px" data-action="showAlerts"><span style="font-size:16px;vertical-align:middle">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
+      <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
+      <button data-noprint title="Print het board" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="print"><span style="font-size:16px;vertical-align:middle">\uD83D\uDDA8</span></button>
+      <button data-noprint title="Admin instellingen" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="showAdmin">\u2699</button>
     </div>
   </div>`;
 }
@@ -692,10 +693,10 @@ function renderSelectionBar(c, selName, matches, unmatched) {
       ${selName ? `<span class="sel-bar-name"><span class="sel-bar-slash">/ </span>${esc(selName)}</span>` : ''}
     </div>
     <div style="display:flex;align-items:center;gap:8px" data-noprint>
-      <button class="btn btn-grey" style="display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 14px" data-action="collapseAll" data-val="${allFolded?'0':'1'}">
+      <button title="${allFolded?'Alle kaarten uitklappen':'Alle kaarten inklappen'}" class="btn btn-grey" style="display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 14px" data-action="collapseAll" data-val="${allFolded?'0':'1'}">
         <span style="font-size:14px">${allFolded?'\u25B8':'\u25BE'}</span> ${allFolded?'Alles uitklappen':'Alles inklappen'}
       </button>
-      ${selName ? `<button class="btn btn-grey" style="font-size:13px;padding:6px 14px" data-action="clearSelection">\u2715 Reset</button>` : ''}
+      ${selName ? `<button title="Selectie opheffen" class="btn btn-grey" style="font-size:13px;padding:6px 14px" data-action="clearSelection">\u2715 Reset</button>` : ''}
     </div>
   </div>`;
 }
@@ -711,7 +712,7 @@ function renderDevsPanel(c, devs, dts, matches) {
 
   let html = '<div class="panel">';
   html += '<div class="panel-header"><span class="panel-title">Ontwikkelaars</span>';
-  html += '<button data-noprint class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
+  html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
   html += '<div class="panel-sub">Klik om koppelingen te zien.</div>';
 
   // Per type-groep
@@ -722,7 +723,7 @@ function renderDevsPanel(c, devs, dts, matches) {
       <span style="color:${c.grijs};font-size:10px;cursor:grab;margin-right:2px" data-noprint>\u2261</span>
       <span class="badge badge-lg">${esc(type.short||'?')}</span>
       <span style="font-size:14px;font-weight:600;flex:1;color:${c.txtPrimary}">${esc(type.label||'Naamloos')}</span>
-      <button data-noprint class="btn-icon" data-action="editDevType" data-id="${type.id}">\u270E</button>
+      <button data-noprint title="Type bewerken" class="btn-icon" data-action="editDevType" data-id="${type.id}">\u270E</button>
     </div>`;
     td.forEach(dev => {
       const isSel = selectedDev === dev.id;
@@ -747,7 +748,7 @@ function renderDevsPanel(c, devs, dts, matches) {
         </div>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:11px;font-weight:500;color:${cntColor};background:${cntBg};padding:1px 5px;border-radius:3px">${cnt}\u00D7</span>
-          <button data-noprint class="btn-xs" style="background:${isSel?c.devSelBg+'88':c.lichtgrijs};border:none;cursor:pointer;font-size:12px;color:${isSel?c.devSelTxt:c.grijs};border-radius:3px;font-family:inherit" data-action="editDev" data-id="${dev.id}">\u270E</button>
+          <button data-noprint class="btn-xs" style="background:${isSel?c.devSelBg+'88':c.lichtgrijs};border:none;cursor:pointer;font-size:12px;color:${isSel?c.devSelTxt:c.grijs};border-radius:3px;font-family:inherit" data-action="editDev" data-id="${dev.id}" title="Ontwikkelaar bewerken">\u270E</button>
         </div>
       </div>`;
     });
@@ -768,13 +769,13 @@ function renderDevsPanel(c, devs, dts, matches) {
       else if (hlMap && !hlMap.has(dev.id)) op = '0.15';
       html += `<div class="dev-item" style="background:${bg};color:${col};border-left:${bl};opacity:${op};font-size:12px" data-action="selectDev" data-id="${dev.id}">
         <span style="color:${col}">${esc(dev.name||'Naamloos')}</span>
-        <button data-noprint class="btn-xs" style="background:${c.lichtgrijs};border:none;cursor:pointer;font-size:11px;color:${c.grijs};border-radius:3px;font-family:inherit" data-action="editDev" data-id="${dev.id}">\u270E</button>
+        <button data-noprint class="btn-xs" style="background:${c.lichtgrijs};border:none;cursor:pointer;font-size:11px;color:${c.grijs};border-radius:3px;font-family:inherit" data-action="editDev" data-id="${dev.id}" title="Ontwikkelaar bewerken">\u270E</button>
       </div>`;
     });
     html += '</div>';
   }
 
-  html += '<button data-noprint class="btn btn-grey btn-sm btn-full" data-action="addDevType">+ Categorie</button>';
+  html += '<button data-noprint title="Nieuw ontwikkelaar-type toevoegen" class="btn btn-grey btn-sm btn-full" data-action="addDevType">+ Categorie</button>';
   html += '</div>';
   return html;
 }
@@ -790,7 +791,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
     html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllKansen">${allKFolded?'\u25B8':'\u25BE'}</button>`;
   }
   html += '</div>';
-  html += '<button data-noprint class="btn btn-black btn-sm" data-action="addKans">+ Nieuw</button></div>';
+  html += '<button data-noprint title="Nieuwe kans toevoegen" class="btn btn-black btn-sm" data-action="addKans">+ Nieuw</button></div>';
   html += `<div class="panel-sub">${dragKansen ? '<span style="color:'+c.geel+';font-weight:500">Loslaten = match ontkoppelen</span>' : 'Koppel aan ontwikkelaar \u2192 match.'}</div>`;
 
   if (dragKansen) {
@@ -808,7 +809,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
       html += `<span style="font-size:14px;color:${c.grijs};cursor:pointer" data-action="collapseCatKansen" data-id="${cat.id}">${allCatFolded?'\u25B8':'\u25BE'}</span>`;
     }
     html += `<span style="font-size:14px;font-weight:600;flex:1;color:${c.txtPrimary}">${esc(cat.label||'Naamloos')}</span>`;
-    html += `<button data-noprint class="btn-icon" data-action="editKansCat" data-id="${cat.id}">\u270E</button>`;
+    html += `<button data-noprint title="Categorie bewerken" class="btn-icon" data-action="editKansCat" data-id="${cat.id}">\u270E</button>`;
     html += '</div>';
 
     ck.forEach(kans => {
@@ -819,8 +820,8 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
       html += `<span style="font-size:13px;color:${c.grijs};flex-shrink:0;line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
       html += `<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:12px;line-height:1.3;color:${c.txtPrimary}">${esc(kans.name||'Naamloos')}</div></div>`;
       html += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0" data-noprint>`;
-      html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}">Match \u2192</button>`;
-      html += `<button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}">\u270E</button>`;
+      html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}" title="Koppel aan ontwikkelaar">Match \u2192</button>`;
+      html += `<button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}" title="Kans bewerken">\u270E</button>`;
       html += '</div></div>';
 
       if (!isKC) {
@@ -851,8 +852,8 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
       html += `<span style="font-size:13px;color:${c.grijs};flex-shrink:0;line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
       html += `<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:12px;line-height:1.3;color:${c.txtPrimary}">${esc(kans.name||'Naamloos')}</div></div>`;
       html += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0" data-noprint>`;
-      html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}">Match \u2192</button>`;
-      html += `<button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}">\u270E</button>`;
+      html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}" title="Koppel aan ontwikkelaar">Match \u2192</button>`;
+      html += `<button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}" title="Kans bewerken">\u270E</button>`;
       html += '</div></div>';
       if (!isKC) {
         html += `<div style="font-size:10px;color:${c.txtSecondary};font-weight:300;margin-top:2px">${kans.omvang ? esc(kans.omvang)+'m\u00B2 \u00B7 ' : ''}${esc(kans.type||'')}</div>`;
@@ -865,7 +866,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
     html += '</div>';
   }
 
-  html += '<button data-noprint class="btn btn-grey btn-sm btn-full" data-action="addKansCat">+ Categorie</button>';
+  html += '<button data-noprint title="Nieuwe kans-categorie toevoegen" class="btn btn-grey btn-sm btn-full" data-action="addKansCat">+ Categorie</button>';
   html += '</div>';
   return html;
 }
@@ -918,7 +919,7 @@ function renderPipeline(c, matches, kansen, devs, dts) {
 
     // Toevoeg-knop
     if (stage.addLabel) {
-      html += `<button data-noprint class="btn-add-col" data-action="addMatch" data-stage="${stage.id}">${esc(stage.addLabel)}</button>`;
+      html += `<button data-noprint title="Nieuwe match toevoegen in ${esc(stage.label)}" class="btn-add-col" data-action="addMatch" data-stage="${stage.id}">${esc(stage.addLabel)}</button>`;
     }
     html += '</div></div>';
   });
@@ -998,7 +999,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
         const dt = dts.find(t => t.id === d.tid);
         html += `<div style="display:flex;align-items:center;gap:5px;font-size:11px">
           <span class="badge badge-sm">${esc(dt?.short||'?')}</span><span>${esc(d.name)}</span>
-          <span data-noprint style="cursor:pointer;opacity:0.3;font-size:10px" data-action="unlinkDev" data-mid="${match.id}" data-did="${d.id}">\u2715</span>
+          <span data-noprint title="Ontkoppelen" style="cursor:pointer;opacity:0.3;font-size:10px" data-action="unlinkDev" data-mid="${match.id}" data-did="${d.id}">\u2715</span>
         </div>`;
       });
       html += '</div>';
@@ -1010,7 +1011,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
       html += `<div class="coalition" data-action="editCoalition" data-mid="${match.id}" data-cidx="${ci}">`;
       html += `<div style="font-weight:500;color:${c.geel};margin-bottom:4px;display:flex;justify-content:space-between">`;
       html += `<span>Coalitie <span style="font-size:8px;font-weight:300;color:${c.grijs}">(klik om te bewerken)</span></span>`;
-      html += `<span data-noprint style="cursor:pointer;color:${c.grijs};font-size:11px" data-action="deleteCoalition" data-mid="${match.id}" data-cidx="${ci}">\u2715</span>`;
+      html += `<span data-noprint title="Coalitie verwijderen" style="cursor:pointer;color:${c.grijs};font-size:11px" data-action="deleteCoalition" data-mid="${match.id}" data-cidx="${ci}">\u2715</span>`;
       html += '</div><div style="display:flex;flex-direction:column;gap:3px">';
       members.forEach(m => {
         const dt = dts.find(t => t.id === m.tid);
@@ -1021,8 +1022,8 @@ function renderMatchCard(c, match, stage, devs, dts) {
 
     // Actieknoppen
     html += `<div style="border-top:1px solid ${c.zachtgrijs};margin-top:6px;padding-top:6px;display:flex;gap:5px;flex-wrap:wrap" data-noprint>`;
-    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
-    html += `<button style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
+    html += `<button title="Coalitie toevoegen" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
+    html += `<button title="Match bewerken" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
     html += '</div>';
 
     // Mobiele verplaats-knoppen (vervangt drag & drop)
