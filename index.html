@@ -36,7 +36,8 @@
     #login-screen .login-success { color: var(--groen); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
     /* Layout */
-    #app { display: none; flex-direction: column; height: 100vh; }
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+    .main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
     .header { background: var(--header); color: var(--headerTxt); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .header-left { display: flex; align-items: center; gap: 18px; }
     .header-logo-ard { font-size: 26px; font-weight: 700; letter-spacing: 3px; }
@@ -53,7 +54,6 @@
     .sel-bar-name { font-size: 12px; }
     .sel-bar-slash { color: var(--geel); font-weight: 500; }
 
-    .main { display: flex; flex: 1; overflow: hidden; }
     .left-panels { width: 500px; flex-shrink: 0; display: flex; border-right: 2px solid var(--zachtgrijs); }
     .panel { width: 250px; background: var(--panelBg); overflow-y: auto; padding: 14px 10px; }
     .panel:first-child { border-right: 1px solid var(--zachtgrijs); }
@@ -129,16 +129,16 @@
     /* Print */
     @page { size: landscape; margin: 0; }
     @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; }
+      * { overflow: visible !important; }
       [data-noprint] { display: none !important; }
       .mob-tabs { display: none !important; }
-      #app { height: auto !important; display: flex !important; }
-      .main { overflow: visible !important; height: auto !important; }
-      .left-panels { overflow: visible !important; }
-      .panel { overflow: visible !important; }
-      .pipeline { overflow: visible !important; }
-      .pipe-col { overflow: visible !important; }
-      .pipe-col-body { overflow: visible !important; padding-bottom: 8px !important; }
+      #login-screen { display: none !important; }
+      #app { display: flex !important; flex-direction: column !important; height: auto !important; min-height: 0 !important; }
+      .main { flex: none !important; height: auto !important; }
+      .left-panels { height: auto !important; }
+      .panel { height: auto !important; }
+      .pipe-col-body { padding-bottom: 8px !important; }
       .header { padding: 8px 16px !important; }
       .sel-bar { padding: 4px 16px !important; min-height: 24px !important; }
       .footer { padding: 4px 16px !important; }
@@ -836,16 +836,23 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   if (uncatK.length > 0) {
     html += `<div style="margin-bottom:14px"><div style="font-size:12px;color:${c.grijs};font-style:italic;margin-bottom:4px">Geen categorie</div>`;
     uncatK.forEach(kans => {
-      html += `<div class="kans-card" draggable="true" data-drag-type="kans" data-drag-id="${kans.id}">
-        <div style="display:flex;justify-content:space-between">
-          <span style="font-weight:500;font-size:12px">${esc(kans.name||'Naamloos')}</span>
-          <div style="display:flex;gap:3px" data-noprint>
-            <button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}">Match \u2192</button>
-            <button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}">\u270E</button>
-          </div>
-        </div>
-        <div style="font-size:10px;color:${c.grijs};font-weight:300">${kans.omvang ? esc(kans.omvang)+'m\u00B2 \u00B7 ' : ''}${esc(kans.type||'')}</div>
-      </div>`;
+      const isKC = STATE.ui.collapsedKansen[kans.id];
+      const mp = mapsUrl(kans.adres);
+      html += `<div class="kans-card" draggable="true" data-drag-type="kans" data-drag-id="${kans.id}" style="padding:${isKC?'6px 10px':'8px 10px'}">`;
+      html += `<div style="display:flex;align-items:flex-start;gap:5px;cursor:pointer" data-action="toggleKansCollapse" data-id="${kans.id}">`;
+      html += `<span style="font-size:13px;color:${c.grijs};flex-shrink:0;line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
+      html += `<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:12px;line-height:1.3;color:${c.txtPrimary}">${esc(kans.name||'Naamloos')}</div></div>`;
+      html += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0" data-noprint>`;
+      html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}">Match \u2192</button>`;
+      html += `<button class="btn-xs" style="background:${c.lichtgrijs};border:none;border-radius:3px;cursor:pointer;color:${c.grijs};font-family:inherit" data-action="editKans" data-id="${kans.id}">\u270E</button>`;
+      html += '</div></div>';
+      if (!isKC) {
+        html += `<div style="font-size:10px;color:${c.txtSecondary};font-weight:300;margin-top:2px">${kans.omvang ? esc(kans.omvang)+'m\u00B2 \u00B7 ' : ''}${esc(kans.type||'')}</div>`;
+        if (kans.adres && mp) {
+          html += `<div style="font-size:10px;margin-top:1px;font-weight:300"><a href="${mp}" target="_blank" rel="noopener noreferrer" style="color:${c.blauw};text-decoration:none">\uD83D\uDCCD ${esc(kans.adres)}</a></div>`;
+        }
+      }
+      html += '</div>';
     });
     html += '</div>';
   }
@@ -1141,7 +1148,7 @@ function renderEditMatchModal(c) {
             const dt = dts.find(t => t.id === dev.tid);
             return `<div style="display:flex;align-items:center;gap:7px;padding:5px;cursor:${inC?'default':'pointer'};border-radius:3px;font-size:13px;background:${linked?c.badgeBg+'10':inC?c.geel+'08':'transparent'};opacity:${inC?'0.5':'1'}"
               ${inC?'':`data-action="toggleMatchDev" data-did="${dev.id}"`}>
-              <div class="cb ${linked||inC?'checked':''}" style="border-color:${linked?c.badgeBg:inC?c.geel:c.zachtgrijs};background:${linked?c.badgeBg:inC?c.geel:'transparent'}">${(linked||inC)?'\u2713':''}</div>
+              <div class="cb ${linked||inC?'checked':''}" style="border-color:${linked?c.geel:inC?c.geel:c.zachtgrijs};background:${linked?c.geel:inC?c.geel:'transparent'}">${(linked||inC)?'\u2713':''}</div>
               <span class="badge badge-sm">${esc(dt?.short||'?')}</span>
               <span style="font-weight:${linked?'500':'300'}">${esc(dev.name)}</span>
               ${inC?`<span style="font-size:10px;color:${c.geel};margin-left:auto">coalitie</span>`:''}
@@ -1200,15 +1207,35 @@ function renderCoalitionModal(c) {
   const devs = sortedArr(STATE.data.devs);
   const dts = sortedArr(STATE.data.devTypes);
   const sel = STATE.ui.modalData?.selectedDevs || [];
+  const ex = STATE.ui.modalExtra || {};
+  // Bepaal welke devs al in ANDERE coalities zitten op deze match
+  const m = STATE.data.matches[ex.mid];
+  const busyIds = new Set();
+  if (m) {
+    (m.coals||[]).forEach((coal, ci) => {
+      if (ex.editing && ci === ex.cidx) return; // huidige coalitie overslaan bij bewerken
+      (coal||[]).forEach(id => busyIds.add(id));
+    });
+  }
   let html = `<div style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
   devs.forEach(d => {
     const ch = sel.includes(d.id);
+    const busy = busyIds.has(d.id);
     const dt = dts.find(t => t.id === d.tid);
-    html += `<div style="display:flex;align-items:center;gap:7px;padding:6px;cursor:pointer;border-radius:3px;font-size:13px;background:${ch?c.geel+'15':'transparent'}" data-action="toggleCoalDev" data-id="${d.id}">
-      <div class="cb ${ch?'checked':''}">${ch?'\u2713':''}</div>
-      <span class="badge badge-sm" style="width:20px;height:20px;font-size:9px">${esc(dt?.short||'?')}</span>
-      <span style="font-weight:${ch?'500':'300'}">${esc(d.name)}</span>
-    </div>`;
+    if (busy) {
+      html += `<div style="display:flex;align-items:center;gap:7px;padding:6px;border-radius:3px;font-size:13px;opacity:0.35;cursor:default">
+        <div class="cb" style="border-color:${c.zachtgrijs};background:transparent"></div>
+        <span class="badge badge-sm" style="width:20px;height:20px;font-size:9px">${esc(dt?.short||'?')}</span>
+        <span style="font-weight:300">${esc(d.name)}</span>
+        <span style="font-size:10px;color:${c.geel};margin-left:auto">coalitie</span>
+      </div>`;
+    } else {
+      html += `<div style="display:flex;align-items:center;gap:7px;padding:6px;cursor:pointer;border-radius:3px;font-size:13px;background:${ch?c.geel+'15':'transparent'}" data-action="toggleCoalDev" data-id="${d.id}">
+        <div class="cb ${ch?'checked':''}">${ch?'\u2713':''}</div>
+        <span class="badge badge-sm" style="width:20px;height:20px;font-size:9px">${esc(dt?.short||'?')}</span>
+        <span style="font-weight:${ch?'500':'300'}">${esc(d.name)}</span>
+      </div>`;
+    }
   });
   html += '</div>';
   const canSave = sel.length >= 2;
@@ -1324,9 +1351,14 @@ function renderAdminModal(c) {
       ${pwMsg ? `<div style="font-size:11px;margin-bottom:8px;color:${pwOk?c.groen:c.rood}">${esc(pwMsg)}</div>` : ''}
       <button class="btn btn-black btn-sm" data-action="changePassword">Wijzig wachtwoord</button>
     </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;display:flex;justify-content:space-between;align-items:center">
-      <button class="btn btn-red btn-sm" data-action="logout">Uitloggen</button>
-      <button class="btn btn-grey btn-sm" data-action="closeModal">Sluiten</button>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button class="btn btn-black btn-sm" data-action="closeModal">Sluiten</button>
+      </div>
+      <div style="border-top:1px dashed ${c.zachtgrijs};padding-top:10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
+        <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
+      </div>
     </div>`;
 }
 
