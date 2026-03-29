@@ -1478,6 +1478,8 @@ function renderAdminModal(c) {
   const d = STATE.ui.modalData || {};
   const pwMsg = d.pwMsg || '';
   const pwOk = d.pwOk || false;
+  const bkMsg = d.bkMsg || '';
+  const bkOk = d.bkOk || false;
   return `
     <div style="margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Wachtwoord wijzigen</div>
@@ -1487,6 +1489,15 @@ function renderAdminModal(c) {
       ${pwMsg ? `<div style="font-size:11px;margin-bottom:8px;color:${pwOk?c.groen:c.rood}">${esc(pwMsg)}</div>` : ''}
       <button class="btn btn-black btn-sm" data-action="changePassword">Wijzig wachtwoord</button>
     </div>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Database backup</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" data-action="exportBackup">\u2B07 Download backup</button>
+        <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" data-action="triggerImport">\u2B06 Importeer backup</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="KB.importBackup(this.files[0])">
+      </div>
+      ${bkMsg ? `<div style="font-size:11px;margin-top:8px;color:${bkOk?c.groen:c.rood}">${esc(bkMsg)}</div>` : ''}
+    </div>
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
@@ -1494,6 +1505,72 @@ function renderAdminModal(c) {
       </div>
     </div>`;
 }
+
+// ─── BACKUP / IMPORT ────────────────────────────
+KB.exportBackup = async function() {
+  const md = STATE.ui.modalData;
+  try {
+    // Lees ook meta (bevat passwordHash)
+    const metaSnap = await db.ref('meta').once('value');
+    const backup = {
+      _version: 1,
+      _date: new Date().toISOString(),
+      _app: 'De Koppelbaas',
+      meta: metaSnap.val() || {},
+      devTypes: STATE.data.devTypes,
+      kansCats: STATE.data.kansCats,
+      devs: STATE.data.devs,
+      kansen: STATE.data.kansen,
+      matches: STATE.data.matches,
+      users: STATE.data.users
+    };
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `koppelbaas-backup-${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (md) { md.bkMsg = 'Backup gedownload!'; md.bkOk = true; renderModal(); }
+  } catch(e) {
+    if (md) { md.bkMsg = 'Fout bij backup: ' + e.message; md.bkOk = false; renderModal(); }
+  }
+};
+
+KB.importBackup = async function(file) {
+  if (!file) return;
+  const md = STATE.ui.modalData;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // Validatie
+    const required = ['devTypes','kansCats','devs','kansen','matches'];
+    const missing = required.filter(k => !(k in data));
+    if (missing.length > 0) {
+      if (md) { md.bkMsg = 'Ongeldig backup-bestand: ontbrekende data (' + missing.join(', ') + ')'; md.bkOk = false; renderModal(); }
+      return;
+    }
+    if (!confirm('Dit overschrijft ALLE huidige data. Doorgaan?')) return;
+    // Schrijf naar Firebase
+    const updates = {};
+    if (data.meta) updates['/meta'] = data.meta;
+    updates['/devTypes'] = data.devTypes || {};
+    updates['/kansCats'] = data.kansCats || {};
+    updates['/devs'] = data.devs || {};
+    updates['/kansen'] = data.kansen || {};
+    updates['/matches'] = data.matches || {};
+    if (data.users) updates['/users'] = data.users;
+    await db.ref().update(updates);
+    if (md) { md.bkMsg = 'Backup hersteld!'; md.bkOk = true; renderModal(); }
+    showToast('Backup hersteld');
+  } catch(e) {
+    if (md) { md.bkMsg = 'Fout bij import: ' + e.message; md.bkOk = false; renderModal(); }
+  }
+  // Reset file input
+  const fi = document.getElementById('import-file-input');
+  if (fi) fi.value = '';
+};
 
 // Modal field helper — update modalData zonder re-render tenzij nodig
 KB.mf = function(field, value) {
@@ -1695,6 +1772,13 @@ function setupEventListeners() {
             renderModal();
           } catch(err) { md.pwMsg = 'Fout: ' + err.message; md.pwOk = false; renderModal(); }
         })();
+        break;
+      }
+      case 'exportBackup':
+        KB.exportBackup(); break;
+      case 'triggerImport': {
+        const fi = document.getElementById('import-file-input');
+        if (fi) fi.click();
         break;
       }
       case 'logout':
