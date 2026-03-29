@@ -730,10 +730,10 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      <button data-noprint title="Bekijk alerts" class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:12px;padding:6px 12px" data-action="showAlerts"><span style="font-size:16px;vertical-align:middle">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
-      <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
-      <button data-noprint title="Print het board" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="print"><span style="font-size:16px;vertical-align:middle">\uD83D\uDDA8</span></button>
-      <button data-noprint title="Admin instellingen" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:16px;padding:6px 12px;width:40px;text-align:center" data-action="showAdmin">\u2699</button>
+      <button data-noprint title="Bekijk alerts" class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:12px;padding:6px 12px" data-action="showAlerts"><span style="font-size:15px;vertical-align:middle">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
+      <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="toggleDark"><span style="font-size:15px;vertical-align:middle">${STATE.ui.dark?'\u2600':'\u263E'}</span></button>
+      <button data-noprint title="Print het board" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="print"><span style="font-size:15px;vertical-align:middle">\uD83D\uDDA8</span></button>
+      <button data-noprint title="Admin instellingen" class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:12px;padding:6px 12px" data-action="showAdmin"><span style="font-size:15px;vertical-align:middle">\u2699</span></button>
     </div>
   </div>`;
 }
@@ -1482,16 +1482,16 @@ function setupEventListeners() {
     switch(action) {
       // Selectie
       case 'selectDev':
+        if (isMob()) break; // geen selectie-highlight op mobiel
         STATE.ui.selectedMatch = null;
         STATE.ui.selectedDev = STATE.ui.selectedDev === id ? null : id;
-        if (isMob() && STATE.ui.selectedDev) { STATE.ui.mobTab = 'pipeline'; }
         render(); break;
       case 'selectMatch': {
+        if (isMob()) break; // geen selectie-highlight op mobiel
         const inner = e.target.closest('[data-action]');
-        if (inner && inner !== el) break; // geneste actie (knop, link, chevron) → niet selecteren
+        if (inner && inner !== el) break;
         STATE.ui.selectedDev = null;
         STATE.ui.selectedMatch = STATE.ui.selectedMatch === id ? null : id;
-        if (isMob() && STATE.ui.selectedMatch) { STATE.ui.mobTab = 'devs'; }
         render(); break;
       }
       case 'clearSelection':
