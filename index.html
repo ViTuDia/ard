@@ -490,11 +490,14 @@ KB.checkSetup = async function() {
   try {
     if (!db) initFirebase();
     const snap = await db.ref('meta/passwordHash').once('value');
-    if (!snap.val()) {
+    const val = snap.val();
+    if (!val || (typeof val === 'string' && val.trim() === '')) {
       showSetupMode();
     }
   } catch(e) {
-    document.getElementById('login-error').textContent = 'Kan niet verbinden: ' + e.message;
+    // Bij permissions-fout: toon setup-mode als fallback zodat gebruiker een wachtwoord kan instellen
+    showSetupMode();
+    document.getElementById('setup-error').textContent = 'Let op: ' + e.message;
   }
 };
 
@@ -532,7 +535,7 @@ KB.handleLogin = async function() {
     if (!db) initFirebase();
     const snap = await db.ref('meta/passwordHash').once('value');
     const stored = snap.val();
-    if (!stored) {
+    if (!stored || (typeof stored === 'string' && stored.trim() === '')) {
       showSetupMode();
       return;
     }
@@ -2079,7 +2082,8 @@ function setupEventListeners() {
     // Sessie aanwezig — check of wachtwoord nog bestaat
     try {
       const snap = await db.ref('meta/passwordHash').once('value');
-      if (!snap.val()) {
+      const val = snap.val();
+      if (!val || (typeof val === 'string' && val.trim() === '')) {
         // Wachtwoord is weg → terug naar setup
         localStorage.removeItem('kb_session');
         showSetupMode();
@@ -2091,12 +2095,9 @@ function setupEventListeners() {
         setupEventListeners();
       }
     } catch(e) {
-      // Netwerk-fout → probeer toch door te gaan (offline scenario)
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      applyTheme();
-      setupListeners();
-      setupEventListeners();
+      // Fout bij check → toon login zodat gebruiker het kan proberen
+      localStorage.removeItem('kb_session');
+      document.getElementById('login-error').textContent = 'Sessie verlopen. Log opnieuw in.';
     }
   } else {
     KB.checkSetup();
