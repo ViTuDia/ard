@@ -274,15 +274,16 @@
       <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
       <button onclick="KB.handleLogin()">Openen</button>
       <div id="login-error"></div>
-      <div style="margin-top:20px"><a href="#" onclick="showSetupMode();return false" style="color:#ffffff44;font-size:11px;text-decoration:none">Wachtwoord instellen / resetten</a></div>
+      <button onclick="document.getElementById('login-mode').style.display='none';document.getElementById('setup-mode').style.display='flex';document.getElementById('setup-pw1').focus();" style="margin-top:24px;background:none;border:1px solid #333;color:#888;padding:8px 20px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px">Wachtwoord instellen / resetten</button>
     </div>
-    <!-- Setup-modus (als nog geen wachtwoord is ingesteld) -->
+    <!-- Setup-modus -->
     <div id="setup-mode" style="display:none;flex-direction:column;align-items:center">
-      <div class="login-setup-msg">Geen wachtwoord ingesteld. Kies een wachtwoord om de app te beveiligen.</div>
+      <div class="login-setup-msg">Kies een wachtwoord om de app te beveiligen.</div>
       <input type="password" id="setup-pw1" placeholder="Nieuw wachtwoord" style="margin-bottom:6px">
       <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
       <button onclick="KB.handleSetup()">Instellen</button>
       <div id="setup-error"></div>
+      <button onclick="document.getElementById('setup-mode').style.display='none';document.getElementById('login-mode').style.display='flex';document.getElementById('login-pw').focus();" style="margin-top:16px;background:none;border:none;color:#666;cursor:pointer;font-family:inherit;font-size:11px">Terug naar inloggen</button>
     </div>
   </div>
 
@@ -482,9 +483,12 @@ async function hashPassword(pw) {
 
 // Check of er al een wachtwoord is ingesteld
 function showSetupMode() {
-  document.getElementById('login-mode').style.display = 'none';
-  document.getElementById('setup-mode').style.display = 'flex';
-  document.getElementById('setup-pw1').focus();
+  const lm = document.getElementById('login-mode');
+  const sm = document.getElementById('setup-mode');
+  if (lm) lm.style.display = 'none';
+  if (sm) { sm.style.display = 'flex'; sm.style.flexDirection = 'column'; sm.style.alignItems = 'center'; }
+  const pw1 = document.getElementById('setup-pw1');
+  if (pw1) pw1.focus();
 }
 
 KB.checkSetup = async function() {
