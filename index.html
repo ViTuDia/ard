@@ -674,10 +674,10 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      <button data-noprint class="btn btn-sm" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:11px" data-action="showAlerts">\u26A0 ${al} alert${al!==1?'s':''}</button>
-      <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
-      <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="print">Print</button>
-      <button data-noprint class="btn btn-sm" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px" data-action="showAdmin">\u2699</button>
+      <button data-noprint class="btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')};color:#fff;font-size:11px;padding:6px 12px" data-action="showAlerts">\u26A0 ${al} alert${al!==1?'s':''}</button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px;width:38px;text-align:center" data-action="toggleDark">${STATE.ui.dark?'\u2600':'\u263E'}</button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px" data-action="print">Print</button>
+      <button data-noprint class="btn" style="background:${STATE.ui.dark?'#444':'#000'};color:#fff;font-size:11px;padding:6px 12px" data-action="showAdmin">\u2699</button>
     </div>
   </div>`;
 }
