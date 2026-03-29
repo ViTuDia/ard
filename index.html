@@ -1300,7 +1300,9 @@ function renderConfirmDeleteModal(c) {
   switch(ex.type) {
     case 'dev': msg = `"${esc(ex.name)}" verwijderen?`; break;
     case 'kans': msg = `"${esc(ex.name)}" verwijderen? Matches worden ook verwijderd.`; break;
-    case 'match': msg = 'Match verwijderen?'; break;
+    case 'match': msg = ex.fromDrag
+        ? `"${esc(ex.name)}" ontkoppelen? Alle ontwikkelaars en coalities worden losgekoppeld. De kans komt terug in het kansenpaneel.`
+        : 'Match verwijderen?'; break;
     case 'coalition': msg = 'Coalitie verwijderen?'; break;
     case 'devType': msg = 'Type verwijderen? Ontwikkelaars \u2192 "geen categorie".'; break;
     case 'kansCat': msg = 'Gebied verwijderen? Kansen \u2192 "geen categorie".'; break;
@@ -1844,12 +1846,14 @@ function setupEventListeners() {
   });
 
   // ─── Drag & Drop (alleen desktop) ───
+  let dragType = null; // houdt bij welk type we slepen
   document.body.addEventListener('dragstart', e => {
     if (isMob()) { e.preventDefault(); return; }
     const el = e.target.closest('[data-drag-type]');
     if (!el) return;
     const type = el.dataset.dragType;
     const dragId = el.dataset.dragId;
+    dragType = type;
     e.dataTransfer.setData('text/plain', JSON.stringify({type, id:dragId}));
     e.dataTransfer.effectAllowed = 'move';
     if (type === 'match') STATE.ui.dragging = dragId;
@@ -1864,6 +1868,7 @@ function setupEventListeners() {
     STATE.ui.draggingKans = null;
     STATE.ui.dragOver = null;
     STATE.ui.dragKansen = false;
+    dragType = null;
     clearDragIndicators();
     render();
   });
@@ -1892,19 +1897,23 @@ function setupEventListeners() {
         STATE.ui.dragOver = null;
         render();
       }
-      // Visuele drop-indicator
-      if (draggableTarget && draggableTarget !== lastIndicatorTarget) {
+      // Visuele drop-indicator — alleen bij zelfde drag-type
+      const matchingTarget = draggableTarget && dragType && draggableTarget.dataset.dragType === dragType
+        ? draggableTarget : null;
+      if (matchingTarget && matchingTarget !== lastIndicatorTarget) {
         clearDragIndicators();
-        lastIndicatorTarget = draggableTarget;
-        const rect = draggableTarget.getBoundingClientRect();
+        lastIndicatorTarget = matchingTarget;
+        const rect = matchingTarget.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         const indicator = document.createElement('div');
         indicator.className = 'drag-indicator';
         if (e.clientY < midY) {
-          draggableTarget.parentNode.insertBefore(indicator, draggableTarget);
+          matchingTarget.parentNode.insertBefore(indicator, matchingTarget);
         } else {
-          draggableTarget.parentNode.insertBefore(indicator, draggableTarget.nextSibling);
+          matchingTarget.parentNode.insertBefore(indicator, matchingTarget.nextSibling);
         }
+      } else if (!matchingTarget && lastIndicatorTarget) {
+        clearDragIndicators();
       }
     }
   });
@@ -1951,8 +1960,12 @@ function setupEventListeners() {
     const kansenPanel = e.target.closest('#kansen-panel');
 
     if (kansenPanel && data.type === 'match') {
-      // Unmatch: verwijder match
-      fbRemove(`matches/${data.id}`);
+      // Waarschuwing: match verwijderen = devs loskoppelen
+      const m = STATE.data.matches[data.id];
+      const kans = m ? STATE.data.kansen[m.kid] : null;
+      STATE.ui.modal = 'confirmDelete';
+      STATE.ui.modalExtra = {type:'match', id:data.id, name:kans?.name||'', fromDrag:true};
+      renderModal();
     } else if (col && data.type === 'match') {
       const newStage = col.dataset.stage;
       const m = STATE.data.matches[data.id]; if (!m) return;
