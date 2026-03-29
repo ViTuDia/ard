@@ -269,21 +269,30 @@
       <div class="logo-ard">ARD</div>
       <div class="logo-sub">ATELIERRUIMDENKERS</div>
     </div>
-    <!-- Login-modus (standaard) -->
-    <div id="login-mode" style="display:flex;flex-direction:column;align-items:center">
+    <!-- Login-modus -->
+    <div id="login-mode" style="display:none;flex-direction:column;align-items:center">
       <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
       <button onclick="KB.handleLogin()">Openen</button>
       <div id="login-error"></div>
-      <button onclick="showSetupMode()" style="margin-top:24px;background:none;border:1px solid #333;color:#888;padding:8px 20px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px">Wachtwoord instellen / resetten</button>
     </div>
-    <!-- Setup-modus -->
+    <!-- Setup-modus (eenmalig, als geen hash in Firebase) -->
     <div id="setup-mode" style="display:none;flex-direction:column;align-items:center">
-      <div class="login-setup-msg">Kies een wachtwoord om de app te beveiligen.</div>
+      <div class="login-setup-msg">Geen wachtwoord ingesteld. Kies een wachtwoord om de app te beveiligen.</div>
       <input type="password" id="setup-pw1" placeholder="Nieuw wachtwoord" style="margin-bottom:6px">
       <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
       <button onclick="KB.handleSetup()">Instellen</button>
       <div id="setup-error"></div>
-      <button onclick="showLoginMode()" style="margin-top:16px;background:none;border:none;color:#666;cursor:pointer;font-family:inherit;font-size:11px">Terug naar inloggen</button>
+    </div>
+    <!-- Setup gelukt -->
+    <div id="setup-done" style="display:none;flex-direction:column;align-items:center">
+      <div style="color:#007b2f;font-size:32px;margin-bottom:12px">&#10003;</div>
+      <div style="color:#fff;font-size:14px;margin-bottom:6px">Wachtwoord ingesteld!</div>
+      <div style="color:#ffffff66;font-size:11px;margin-bottom:20px">Je kunt nu inloggen.</div>
+      <button onclick="document.getElementById('setup-done').style.display='none';document.getElementById('login-mode').style.display='flex';document.getElementById('login-pw').focus();" style="padding:10px 32px;font-size:13px;font-weight:500;background:#d9a300;color:#000;border:none;border-radius:4px;cursor:pointer;font-family:inherit">Naar inloggen</button>
+    </div>
+    <!-- Laden (even wachten op Firebase check) -->
+    <div id="login-loading" style="display:flex;flex-direction:column;align-items:center">
+      <div style="color:#ffffff44;font-size:12px">Laden...</div>
     </div>
   </div>
 
@@ -487,17 +496,18 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function showSetupMode() {
-  document.getElementById('login-mode').style.display = 'none';
-  const sm = document.getElementById('setup-mode');
-  sm.style.display = 'flex';
-  sm.style.flexDirection = 'column';
-  sm.style.alignItems = 'center';
+function hideAllLoginPanels() {
+  ['login-mode','setup-mode','setup-done','login-loading'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
 }
 
-function showLoginMode() {
-  document.getElementById('setup-mode').style.display = 'none';
-  document.getElementById('login-mode').style.display = 'flex';
+function showPanel(id) {
+  hideAllLoginPanels();
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  el.style.alignItems = 'center';
 }
 
 let _appEntered = false;
@@ -511,6 +521,25 @@ function enterApp() {
   setupListeners();
   setupEventListeners();
 }
+
+// Bij opstarten: check of er een hash in Firebase staat
+KB.checkInitialState = async function() {
+  try {
+    if (!db) initFirebase();
+    const snap = await db.ref('meta/passwordHash').once('value');
+    const val = snap.val();
+    if (!val) {
+      showPanel('setup-mode');
+    } else {
+      showPanel('login-mode');
+      document.getElementById('login-pw').focus();
+    }
+  } catch(e) {
+    // Firebase fout → toon login, gebruiker kan het proberen
+    showPanel('login-mode');
+    document.getElementById('login-error').textContent = 'Verbindingsfout: ' + e.message;
+  }
+};
 
 KB.handleSetup = async function() {
   const pw1 = document.getElementById('setup-pw1').value.trim();
@@ -526,7 +555,7 @@ KB.handleSetup = async function() {
     if (!db) initFirebase();
     const hashed = await hashPassword(pw1);
     await db.ref('meta/passwordHash').set(hashed);
-    enterApp();
+    showPanel('setup-done');
   } catch(e) {
     errEl.style.color = '';
     errEl.textContent = 'Fout: ' + e.message;
@@ -542,7 +571,7 @@ KB.handleLogin = async function() {
     const snap = await db.ref('meta/passwordHash').once('value');
     const stored = snap.val();
     if (!stored) {
-      showSetupMode();
+      showPanel('setup-mode');
       return;
     }
     const hashed = await hashPassword(pw);
@@ -2078,25 +2107,28 @@ function setupEventListeners() {
 
 // ─── INIT ────────────────────────────────────────
 (function init() {
-  try { initFirebase(); } catch(e) { console.error('Init fout:', e); }
+  try { initFirebase(); } catch(e) { console.error('Firebase init:', e); }
 
   if (localStorage.getItem('kb_session') === '1' && db) {
+    // Sessie aanwezig → direct naar app
     try { enterApp(); } catch(e) {
-      console.error('EnterApp fout:', e);
+      console.error('EnterApp:', e);
       localStorage.removeItem('kb_session');
+      KB.checkInitialState();
     }
+  } else {
+    // Geen sessie → check Firebase voor hash
+    KB.checkInitialState();
   }
 
-  // Event listeners — altijd registreren, ongeacht Firebase status
-  try {
-    document.getElementById('login-pw').addEventListener('keydown', e => {
-      if (e.key === 'Enter') KB.handleLogin();
-    });
-    document.getElementById('setup-pw2').addEventListener('keydown', e => {
-      if (e.key === 'Enter') KB.handleSetup();
-    });
-    window.addEventListener('resize', () => updateMobView());
-  } catch(e) { console.error('Event listener fout:', e); }
+  // Event listeners — altijd registreren
+  document.getElementById('login-pw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') KB.handleLogin();
+  });
+  document.getElementById('setup-pw2').addEventListener('keydown', e => {
+    if (e.key === 'Enter') KB.handleSetup();
+  });
+  window.addEventListener('resize', () => updateMobView());
 })();
 
   </script>
