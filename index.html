@@ -245,7 +245,7 @@
       }
 
       /* Verberg drag-gerelateerde elementen op mobiel */
-      [draggable="true"] { -webkit-user-drag: none; }
+      [draggable="true"] { -webkit-user-drag: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       .drop-zone-active { display: none; }
 
       /* iOS Safari: cursor:pointer nodig voor click-delegatie op niet-native elementen */
@@ -2149,6 +2149,8 @@ function setupEventListeners() {
     if (!touchClone) {
       touchScrolling = false;
       e.preventDefault();
+      // Wis tekstselectie
+      if (window.getSelection) window.getSelection().removeAllRanges();
       dragType = touchData.type;
       dragSrcId = touchData.id;
       if (dragType === 'match') STATE.ui.dragging = dragSrcId;
