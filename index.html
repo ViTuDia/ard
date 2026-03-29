@@ -2077,23 +2077,24 @@ function setupEventListeners() {
       if (m.stage === newStage) {
         // Reorder binnen kolom — alleen als positie verandert
         const targetCard = e.target.closest('[data-drag-type="match"]');
-        if (!targetCard || targetCard.dataset.dragId === data.id) break; // drop op zelf of lege ruimte → niets doen
-        const sm = objToArr(STATE.data.matches).filter(x => x.stage === newStage).sort((a,b) => (a.so||0) - (b.so||0));
-        const fromIdx = sm.findIndex(x => x.id === data.id);
-        const targetIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
-        if (fromIdx < 0 || targetIdx < 0) break;
-        // Boven of onder het target?
-        const rect = targetCard.getBoundingClientRect();
-        const insertAfter = e.clientY > rect.top + rect.height / 2;
-        let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
-        // Corrigeer als bron vóór target zat
-        if (fromIdx < toIdx) toIdx--;
-        if (fromIdx === toIdx) break; // geen verandering
-        const item = sm.splice(fromIdx, 1)[0];
-        sm.splice(toIdx, 0, item);
-        const updates = {};
-        sm.forEach((x, i) => { updates[`matches/${x.id}/so`] = i; });
-        fbMulti(updates);
+        if (targetCard && targetCard.dataset.dragId !== data.id) {
+          const sm = objToArr(STATE.data.matches).filter(x => x.stage === newStage).sort((a,b) => (a.so||0) - (b.so||0));
+          const fromIdx = sm.findIndex(x => x.id === data.id);
+          const targetIdx = sm.findIndex(x => x.id === targetCard.dataset.dragId);
+          if (fromIdx >= 0 && targetIdx >= 0) {
+            const rect = targetCard.getBoundingClientRect();
+            const insertAfter = e.clientY > rect.top + rect.height / 2;
+            let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+            if (fromIdx < toIdx) toIdx--;
+            if (fromIdx !== toIdx) {
+              const item = sm.splice(fromIdx, 1)[0];
+              sm.splice(toIdx, 0, item);
+              const updates = {};
+              sm.forEach((x, i) => { updates[`matches/${x.id}/so`] = i; });
+              fbMulti(updates);
+            }
+          }
+        }
       } else {
         const oldIdx = STAGE_ORDER[m.stage] || 0;
         const newIdx = STAGE_ORDER[newStage] || 0;
