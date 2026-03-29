@@ -36,7 +36,7 @@
     #login-screen .login-success { color: var(--groen); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
     /* Layout */
-    #app { display: none; flex-direction: column; min-height: 100vh; }
+    #app { display: none; flex-direction: column; height: 100vh; }
     .header { background: var(--header); color: var(--headerTxt); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .header-left { display: flex; align-items: center; gap: 18px; }
     .header-logo-ard { font-size: 26px; font-weight: 700; letter-spacing: 3px; }
@@ -127,10 +127,21 @@
     .mob-move-btns { display: none; }
 
     /* Print */
+    @page { size: landscape; margin: 0; }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       [data-noprint] { display: none !important; }
       .mob-tabs { display: none !important; }
+      #app { height: auto !important; display: flex !important; }
+      .main { overflow: visible !important; height: auto !important; }
+      .left-panels { overflow: visible !important; }
+      .panel { overflow: visible !important; }
+      .pipeline { overflow: visible !important; }
+      .pipe-col { overflow: visible !important; }
+      .pipe-col-body { overflow: visible !important; padding-bottom: 8px !important; }
+      .header { padding: 8px 16px !important; }
+      .sel-bar { padding: 4px 16px !important; min-height: 24px !important; }
+      .footer { padding: 4px 16px !important; }
     }
 
     /* ─── MOBIEL (< 768px) ─── */
@@ -253,7 +264,7 @@
       <div class="logo-sub">ATELIERRUIMDENKERS</div>
     </div>
     <!-- Login-modus (standaard) -->
-    <div id="login-mode">
+    <div id="login-mode" style="display:flex;flex-direction:column;align-items:center">
       <input type="password" id="login-pw" placeholder="Wachtwoord" autofocus>
       <button onclick="KB.handleLogin()">Openen</button>
       <div id="login-error"></div>
@@ -881,7 +892,7 @@ function renderPipeline(c, matches, kansen, devs, dts) {
         </div>
         <div style="font-size:24px;font-weight:300;color:${sc};flex-shrink:0">${sm.length}</div>
       </div>
-      ${stage.needsMin2 ? `<div style="font-size:8px;color:${c.grijs};font-weight:300;font-style:italic">Min. 2 koppelingen</div>` : `<div style="font-size:8px;color:${c.grijs};font-weight:300;font-style:italic">Min. 1 koppeling</div>`}
+      ${stage.needsMin2 ? `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">Min. 2 koppelingen</div>` : `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">Min. 1 koppeling</div>`}
     </div>`;
 
     // Kaarten
@@ -925,11 +936,11 @@ function renderMatchCard(c, match, stage, devs, dts) {
   const bgc = al==='rood' ? c.rood+'18' : al==='oranje' ? c.oranje+'18' : c.kaart;
   const shadow = isSel ? `0 0 0 2px ${sc},0 2px 12px rgba(0,0,0,0.06)` : '0 1px 2px rgba(0,0,0,0.02)';
 
-  let html = `<div class="match-card" draggable="true" data-drag-type="match" data-drag-id="${match.id}"
-    style="padding:${isC?'8px 12px':'14px'};background:${bgc};border-left:5px solid ${bc};opacity:${op};box-shadow:${shadow}">`;
+  let html = `<div class="match-card" draggable="true" data-drag-type="match" data-drag-id="${match.id}" data-action="selectMatch" data-id="${match.id}"
+    style="padding:14px;background:${bgc};border-left:5px solid ${bc};opacity:${op};box-shadow:${shadow}">`;
 
   // Titel-rij (altijd zichtbaar)
-  html += `<div style="display:flex;align-items:flex-start;gap:6px;cursor:pointer" data-action="selectMatch" data-id="${match.id}">`;
+  html += `<div style="display:flex;align-items:flex-start;gap:6px;cursor:pointer">`;
   html += `<span style="font-size:14px;color:${c.grijs};line-height:1.4;flex-shrink:0;padding:2px 4px" data-action="toggleMatchCollapse" data-id="${match.id}">${isC?'\u25B8':'\u25BE'}</span>`;
   html += `<span style="font-weight:500;font-size:14px;line-height:1.3;flex:1;min-width:0">${esc(kans.name)}</span>`;
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0;margin-top:3px">(${tl})</span>`;
@@ -1381,12 +1392,14 @@ function setupEventListeners() {
         STATE.ui.selectedDev = STATE.ui.selectedDev === id ? null : id;
         if (isMob() && STATE.ui.selectedDev) { STATE.ui.mobTab = 'pipeline'; }
         render(); break;
-      case 'selectMatch':
-        if (e.target.closest('[data-action="toggleMatchCollapse"]')) break;
+      case 'selectMatch': {
+        const inner = e.target.closest('[data-action]');
+        if (inner && inner !== el) break; // geneste actie (knop, link, chevron) → niet selecteren
         STATE.ui.selectedDev = null;
         STATE.ui.selectedMatch = STATE.ui.selectedMatch === id ? null : id;
         if (isMob() && STATE.ui.selectedMatch) { STATE.ui.mobTab = 'devs'; }
         render(); break;
+      }
       case 'clearSelection':
         STATE.ui.selectedDev = null; STATE.ui.selectedMatch = null;
         render(); break;
@@ -1558,9 +1571,18 @@ function setupEventListeners() {
         const {kansId, stage} = STATE.ui.modalExtra;
         const devIds = STATE.ui.modalData.selectedDevs;
         const stg = stage || 'matches';
-        const cnt = objToArr(STATE.data.matches).filter(m => m.stage === stg).length;
-        fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null});
-        STATE.ui.modal = null; renderModal(); break;
+        // Stage gate als de doelkolom een gate heeft (niet voor "matches" zelf)
+        if (STAGE_GATES[stg]) {
+          STATE.ui.modal = 'stageGate';
+          STATE.ui.modalData = {checked: false};
+          STATE.ui.modalExtra = {...STAGE_GATES[stg], pendingStage: stg, newMatchKansId: kansId, newMatchDevIds: devIds};
+          renderModal();
+        } else {
+          const cnt = objToArr(STATE.data.matches).filter(m => m.stage === stg).length;
+          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null});
+          STATE.ui.modal = null; renderModal();
+        }
+        break;
       }
       case 'editMatch': {
         const m = STATE.data.matches[id];
@@ -1765,6 +1787,11 @@ function setupEventListeners() {
             fbUpdate(`matches/${ex.dragMatchId}`, {stage:newStage, so:cnt, stageHistory:hist, updatedAt:today()});
           }
           STATE.ui.modal = null; renderModal();
+        } else if (ex.newMatchKansId) {
+          // Nieuwe match via + knop met stage gate
+          const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
+          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null});
+          STATE.ui.modal = null; renderModal();
         }
         break;
       }
@@ -1867,6 +1894,7 @@ function setupEventListeners() {
 
     STATE.ui.dragging = null; STATE.ui.draggingKans = null;
     STATE.ui.dragOver = null; STATE.ui.dragKansen = false;
+    render();
   });
 }
 
