@@ -948,7 +948,6 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
     const allCatFolded = ck.length > 0 && ck.every(k => STATE.ui.collapsedKansen[k.id]);
     html += `<div class="cat-group" data-kanscat-group="${cat.id}">`;
     html += `<div class="cat-header" draggable="true" data-drag-type="kansCat" data-drag-id="${cat.id}">`;
-    html += `<span style="color:${c.grijs};font-size:10px;cursor:grab;margin-right:2px" data-noprint>\u2261</span>`;
     if (ck.length > 0) {
       html += `<span style="font-size:14px;color:${c.grijs};cursor:pointer" data-action="collapseCatKansen" data-id="${cat.id}">${allCatFolded?'\u25B8':'\u25BE'}</span>`;
     }
