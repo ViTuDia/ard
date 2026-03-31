@@ -882,7 +882,7 @@ function renderDevsPanel(c, devs, dts, matches) {
 
       const cntColor = isSel ? '#999' : (cnt===0 ? c.rood : c.txtPrimary);
       const cntBg = isSel ? 'transparent' : (cnt===0 ? c.rood+'10' : c.lichtgrijs);
-      html += `<div class="dev-item" data-action="selectDev" data-id="${dev.id}"
+      html += `<div class="dev-item" draggable="true" data-drag-type="dev" data-drag-id="${dev.id}" data-action="selectDev" data-id="${dev.id}"
         style="background:${bg};color:${col};border-left:${bl};opacity:${op};box-shadow:${shadow}">
         <div>
           <div style="font-weight:400;font-size:13px;color:${col}">${esc(dev.name||'Naamloos')}</div>
@@ -909,7 +909,7 @@ function renderDevsPanel(c, devs, dts, matches) {
       if (isSel) { bg = c.devSelBg; col = c.devSelTxt; bl = `3px solid ${c.devSelBorder}`; }
       else if (hlMap && hlMap.has(dev.id)) { bg = c.devHlBg; bl = `3px solid ${c.devHlBorder}`; }
       else if (hlMap && !hlMap.has(dev.id)) op = '0.15';
-      html += `<div class="dev-item" style="background:${bg};color:${col};border-left:${bl};opacity:${op};font-size:12px" data-action="selectDev" data-id="${dev.id}">
+      html += `<div class="dev-item" draggable="true" data-drag-type="dev" data-drag-id="${dev.id}" style="background:${bg};color:${col};border-left:${bl};opacity:${op};font-size:12px" data-action="selectDev" data-id="${dev.id}">
         <span style="color:${col}">${esc(dev.name||'Naamloos')}</span>
         <button data-noprint class="btn-xs" style="background:${c.lichtgrijs};border:none;cursor:pointer;font-size:11px;color:${c.grijs};border-radius:3px;font-family:inherit" data-action="editDev" data-id="${dev.id}" title="Ontwikkelaar bewerken">\u270E</button>
       </div>`;
@@ -2215,10 +2215,16 @@ function setupEventListeners() {
       return el.closest('[data-drag-type="match"]');
     }
     if (dragType === 'kans') {
-      // Kans naar andere categorie: zoek kansCat-groep
       const grp = el.closest('[data-kanscat-group]');
       if (grp) return grp.querySelector('[data-drag-type="kansCat"]');
-      // Kans naar pipeline: wordt afgehandeld via col in executeDrop
+      return null;
+    }
+    if (dragType === 'dev') {
+      // Dev naar andere categorie of reorder binnen categorie
+      const devEl = el.closest('[data-drag-type="dev"]');
+      if (devEl) return devEl;
+      const grp = el.closest('[data-devtype-group]');
+      if (grp) return grp.querySelector('[data-drag-type="devType"]');
       return null;
     }
     return null;
@@ -2280,10 +2286,31 @@ function setupEventListeners() {
 
     if (dragType === 'kans') {
       const grp = targetEl.closest('[data-kanscat-group]');
-      if (!grp) return true; // naar pipeline = altijd wijziging
+      if (!grp) return true;
       const targetCid = grp.dataset.kanscatGroup;
       const kans = STATE.data.kansen[dragSrcId];
       return kans && kans.cid !== targetCid;
+    }
+
+    if (dragType === 'dev') {
+      const grp = targetEl.closest('[data-devtype-group]');
+      if (!grp) return false;
+      const targetTid = grp.dataset.devtypeGroup;
+      const dev = STATE.data.devs[dragSrcId];
+      if (!dev) return false;
+      if (dev.tid !== targetTid) return true; // andere categorie = altijd wijziging
+      // Zelfde categorie: check reorder
+      const targetDev = targetEl.closest('[data-drag-type="dev"]');
+      if (!targetDev || targetDev.dataset.dragId === dragSrcId) return false;
+      const td = sortedArr(STATE.data.devs).filter(d => d.tid === targetTid);
+      const fromIdx = td.findIndex(d => d.id === dragSrcId);
+      const targetIdx = td.findIndex(d => d.id === targetDev.dataset.dragId);
+      if (fromIdx < 0 || targetIdx < 0) return false;
+      const rect = targetDev.getBoundingClientRect();
+      const insertAfter = clientY > rect.top + rect.height / 2;
+      let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+      if (fromIdx < toIdx) toIdx--;
+      return fromIdx !== toIdx;
     }
 
     return true;
@@ -2297,11 +2324,11 @@ function setupEventListeners() {
       if (tid !== lastIndicatorId) {
         clearDragIndicators();
         lastIndicatorId = tid;
-        const indicatorParent = (dragType === 'devType')
-          ? dropTarget.closest('[data-devtype-group]')
-          : (dragType === 'kansCat' || dragType === 'kans')
-          ? dropTarget.closest('[data-kanscat-group]')
-          : dropTarget;
+        let indicatorParent;
+        if (dragType === 'devType') indicatorParent = dropTarget.closest('[data-devtype-group]');
+        else if (dragType === 'kansCat' || dragType === 'kans') indicatorParent = dropTarget.closest('[data-kanscat-group]');
+        else if (dragType === 'dev') indicatorParent = dropTarget.closest('[data-drag-type="dev"]') || dropTarget;
+        else indicatorParent = dropTarget;
         if (indicatorParent) {
           const rect = indicatorParent.getBoundingClientRect();
           const midY = rect.top + rect.height / 2;
@@ -2381,6 +2408,41 @@ function setupEventListeners() {
         }
         return;
       }
+    }
+
+    // Dev naar andere categorie of reorder
+    if (data.type === 'dev') {
+      const grp = targetEl.closest('[data-devtype-group]');
+      if (!grp) return;
+      const newTid = grp.dataset.devtypeGroup;
+      const dev = STATE.data.devs[data.id];
+      if (!dev) return;
+      if (dev.tid !== newTid) {
+        // Andere categorie: update tid + so
+        const newSo = objToArr(STATE.data.devs).filter(d => d.tid === newTid).length;
+        fbUpdate(`devs/${data.id}`, {tid: newTid, so: newSo, updatedAt: today()});
+      } else {
+        // Reorder binnen zelfde categorie
+        const targetDev = targetEl.closest('[data-drag-type="dev"]');
+        if (!targetDev || targetDev.dataset.dragId === data.id) return;
+        const td = sortedArr(STATE.data.devs).filter(d => d.tid === newTid);
+        const fromIdx = td.findIndex(d => d.id === data.id);
+        const targetIdx = td.findIndex(d => d.id === targetDev.dataset.dragId);
+        if (fromIdx >= 0 && targetIdx >= 0) {
+          const rect = targetDev.getBoundingClientRect();
+          const insertAfter = clientY > rect.top + rect.height / 2;
+          let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+          if (fromIdx < toIdx) toIdx--;
+          if (fromIdx !== toIdx) {
+            const item = td.splice(fromIdx, 1)[0];
+            td.splice(toIdx, 0, item);
+            const updates = {};
+            td.forEach((d, i) => { updates[`devs/${d.id}/so`] = i; });
+            fbMulti(updates);
+          }
+        }
+      }
+      return;
     }
 
     const col = targetEl.closest('[data-stage]');
