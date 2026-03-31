@@ -408,6 +408,7 @@ const STATE = {
     modal: null, modalData: null, modalExtra: null,
     mobTab: 'devs', mobStage: 'matches',
     searchDevs: '', searchKansen: '',
+    leftPanelWidth: null,
     connected: true, modalDirty: false,
   }
 };
@@ -720,6 +721,13 @@ function render() {
   const searchFocusId = ae && ae.classList.contains('panel-search') ? ae.oninput?.toString() : null;
 
   document.getElementById('board-container').innerHTML = html;
+
+  // Herstel paneel-breedte na render
+  if (STATE.ui.leftPanelWidth) {
+    const lp = document.getElementById('left-panels');
+    if (lp) lp.style.width = STATE.ui.leftPanelWidth + 'px';
+  }
+
   renderModal();
   updateMobView();
 
@@ -1653,6 +1661,7 @@ function setupEventListeners() {
       const mainRect = lp.parentElement.getBoundingClientRect();
       const newWidth = Math.max(200, Math.min(e.clientX - mainRect.left, mainRect.width - 300));
       lp.style.width = newWidth + 'px';
+      STATE.ui.leftPanelWidth = newWidth;
     });
     document.body.addEventListener('mouseup', () => {
       if (resizing) {
@@ -1679,6 +1688,7 @@ function setupEventListeners() {
       const mainRect = lp.parentElement.getBoundingClientRect();
       const newWidth = Math.max(200, Math.min(touch.clientX - mainRect.left, mainRect.width - 300));
       lp.style.width = newWidth + 'px';
+      STATE.ui.leftPanelWidth = newWidth;
     }, {passive: false});
     document.body.addEventListener('touchend', e => {
       if (resizeTouchId !== null) {
