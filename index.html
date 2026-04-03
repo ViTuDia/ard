@@ -2527,48 +2527,48 @@ function setupEventListeners() {
     // Kans naar andere categorie of reorder binnen categorie
     if (data.type === 'kans') {
       const grp = targetEl.closest('[data-kanscat-group]');
-      if (!grp) return;
-      const newCid = grp.dataset.kanscatGroup;
-      const kans = STATE.data.kansen[data.id];
-      if (!kans) return;
-      if (kans.cid !== newCid) {
-        // Andere categorie: bepaal invoegpositie
-        const targetKans = targetEl.closest('[data-drag-type="kans"]');
-        const tk = sortedArr(STATE.data.kansen).filter(k => k.cid === newCid);
-        let newSo = tk.length; // default: onderaan
-        if (targetKans) {
+      if (grp) {
+        const newCid = grp.dataset.kanscatGroup;
+        const kans = STATE.data.kansen[data.id];
+        if (!kans) return;
+        if (kans.cid !== newCid) {
+          const targetKans = targetEl.closest('[data-drag-type="kans"]');
+          const tk = sortedArr(STATE.data.kansen).filter(k => k.cid === newCid);
+          let newSo = tk.length;
+          if (targetKans) {
+            const targetIdx = tk.findIndex(k => k.id === targetKans.dataset.dragId);
+            if (targetIdx >= 0) {
+              newSo = resolveInsertAfter(targetKans, clientY) ? targetIdx + 1 : targetIdx;
+            }
+          }
+          const updates = {};
+          tk.forEach((k, i) => { const so = i >= newSo ? i + 1 : i; updates[`kansen/${k.id}/so`] = so; });
+          updates[`kansen/${data.id}/cid`] = newCid;
+          updates[`kansen/${data.id}/so`] = newSo;
+          updates[`kansen/${data.id}/updatedAt`] = today();
+          fbMulti(updates);
+        } else {
+          const targetKans = targetEl.closest('[data-drag-type="kans"]');
+          if (!targetKans || targetKans.dataset.dragId === data.id) return;
+          const tk = sortedArr(STATE.data.kansen).filter(k => k.cid === newCid);
+          const fromIdx = tk.findIndex(k => k.id === data.id);
           const targetIdx = tk.findIndex(k => k.id === targetKans.dataset.dragId);
-          if (targetIdx >= 0) {
-            newSo = resolveInsertAfter(targetKans, clientY) ? targetIdx + 1 : targetIdx;
+          if (fromIdx >= 0 && targetIdx >= 0) {
+            const insertAfter = resolveInsertAfter(targetKans, clientY);
+            let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
+            if (fromIdx < toIdx) toIdx--;
+            if (fromIdx !== toIdx) {
+              const item = tk.splice(fromIdx, 1)[0];
+              tk.splice(toIdx, 0, item);
+              const updates = {};
+              tk.forEach((k, i) => { updates[`kansen/${k.id}/so`] = i; });
+              fbMulti(updates);
+            }
           }
         }
-        const updates = {};
-        tk.forEach((k, i) => { const so = i >= newSo ? i + 1 : i; updates[`kansen/${k.id}/so`] = so; });
-        updates[`kansen/${data.id}/cid`] = newCid;
-        updates[`kansen/${data.id}/so`] = newSo;
-        updates[`kansen/${data.id}/updatedAt`] = today();
-        fbMulti(updates);
-      } else {
-        // Reorder binnen zelfde categorie
-        const targetKans = targetEl.closest('[data-drag-type="kans"]');
-        if (!targetKans || targetKans.dataset.dragId === data.id) return;
-        const tk = sortedArr(STATE.data.kansen).filter(k => k.cid === newCid);
-        const fromIdx = tk.findIndex(k => k.id === data.id);
-        const targetIdx = tk.findIndex(k => k.id === targetKans.dataset.dragId);
-        if (fromIdx >= 0 && targetIdx >= 0) {
-          const insertAfter = resolveInsertAfter(targetKans, clientY);
-          let toIdx = insertAfter ? targetIdx + 1 : targetIdx;
-          if (fromIdx < toIdx) toIdx--;
-          if (fromIdx !== toIdx) {
-            const item = tk.splice(fromIdx, 1)[0];
-            tk.splice(toIdx, 0, item);
-            const updates = {};
-            tk.forEach((k, i) => { updates[`kansen/${k.id}/so`] = i; });
-            fbMulti(updates);
-          }
-        }
+        return;
       }
-      return;
+      // Geen categorie-groep → doorvallen naar pipeline check hieronder
     }
 
     // Dev naar andere categorie of reorder
