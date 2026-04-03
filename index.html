@@ -1184,7 +1184,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
     html += `<button title="Coalitie toevoegen" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
     html += `<button title="Match bewerken" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
     html += `<span style="flex:1"></span>`;
-    html += `<button title="${match.locked?'Ontgrendel':'Vergrendel'}" style="font-size:11px;background:none;border:none;cursor:pointer;color:${match.locked?c.geel:c.grijs};opacity:${match.locked?'0.7':'0.3'};padding:3px 4px;font-size:13px" data-action="toggleLock" data-id="${match.id}">${match.locked?'\uD83D\uDD12':'\uD83D\uDD13'}</button>`;
+    html += `<button title="${match.locked?'Ontgrendel':'Vergrendel'}" style="background:none;border:none;cursor:pointer;color:${match.locked?c.geel:c.grijs};opacity:${match.locked?'0.7':'0.3'};font-size:13px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center" data-action="toggleLock" data-id="${match.id}">${match.locked?'\uD83D\uDD12':'\uD83D\uDD13'}</button>`;
     html += '</div>';
 
     // Mobiele verplaats-knoppen (vervangt drag & drop)
