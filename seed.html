@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Seed Data — Koppelbaas</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head><body style="font-family:sans-serif;padding:40px;background:#111;color:#eee">
+<h2>🌱 Koppelbaas — Seed Testdata</h2>
+<p>Klik op de knop om testdata te laden in Firebase. <strong>Let op:</strong> dit overschrijft alle bestaande data!</p>
+<button id="btn" style="padding:14px 32px;font-size:16px;background:#d9a300;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600">Testdata laden</button>
+<pre id="log" style="margin-top:20px;font-size:12px;color:#999;white-space:pre-wrap"></pre>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCuOvghMPD0d_yKnhAhNHXbN72NosDRdKQ",
+  authDomain: "atelierruimdenkers-d47d6.firebaseapp.com",
+  databaseURL: "https://atelierruimdenkers-d47d6-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "atelierruimdenkers-d47d6",
+  storageBucket: "atelierruimdenkers-d47d6.firebasestorage.app",
+  messagingSenderId: "534130177405",
+  appId: "1:534130177405:web:05c134372ec52fa6b80814"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const log = msg => document.getElementById('log').textContent += msg + '\n';
+
+document.getElementById('btn').onclick = async function() {
+  if (!confirm('Dit overschrijft ALLE data in Firebase. Doorgaan?')) return;
+  this.disabled = true;
+  this.textContent = 'Bezig...';
+  try {
+    // ─── Meta (conversiepercentages + honorarium defaults) ───
+    log('Meta...');
+    await db.ref('meta/stageKansen').set({
+      matches: 10, verkennend: 25, offerte: 50, actief: 100
+    });
+    await db.ref('meta/honDefaults').set({
+      bkm2: 2000, honPct: 4
+    });
+
+    // ─── DevTypes ───
+    log('DevTypes...');
+    await db.ref('devTypes').set({
+      t1: {label:"Puur sang", short:"PS", so:0},
+      t2: {label:"Ontw. bouwer", short:"OB", so:1},
+      t3: {label:"Investeerder", short:"IN", so:2},
+      t4: {label:"Gebiedsontwikkelaar", short:"GO", so:3},
+      t5: {label:"CPO / Zelfbouw", short:"CP", so:4}
+    });
+
+    // ─── KansCats ───
+    log('KansCats...');
+    await db.ref('kansCats').set({
+      c1: {label:"Rotterdam", so:0},
+      c2: {label:"Schiedam", so:1},
+      c3: {label:"Vlaardingen", so:2},
+      c4: {label:"Den Haag", so:3},
+      c5: {label:"Delft", so:4}
+    });
+
+    // ─── Users ───
+    log('Users...');
+    await db.ref('users').set({
+      u1: {name:"Vincent", short:"VT", so:0},
+      u2: {name:"Gideon", short:"GP", so:1}
+    });
+
+    // ─── Devs ───
+    log('Ontwikkelaars...');
+    await db.ref('devs').set({
+      d1:  {name:"Heijmans Vastgoed", tid:"t1", schaal:"Groot", contact:"Jan de Vries", notitie:"Landelijk actief, focus op binnenstedelijk", so:0, createdAt:"2026-03-01", updatedAt:"2026-03-28", ownerId:null},
+      d2:  {name:"BPD Ontwikkeling", tid:"t1", schaal:"Groot", contact:"Lisa Bakker", notitie:"Dochter van Rabobank", so:1, createdAt:"2026-03-02", updatedAt:"2026-03-28", ownerId:null},
+      d3:  {name:"AM Gebiedsontwikkeling", tid:"t4", schaal:"Groot", contact:"Peter Hendriks", notitie:"Focus op complexe gebiedstransformaties", so:0, createdAt:"2026-03-03", updatedAt:"2026-03-28", ownerId:null},
+      d4:  {name:"Synchroon", tid:"t1", schaal:"Middel", contact:"Eva Smit", notitie:"Conceptueel sterk, duurzaamheid", so:2, createdAt:"2026-03-04", updatedAt:"2026-03-28", ownerId:null},
+      d5:  {name:"Vorm", tid:"t2", schaal:"Groot", contact:"Mark Jansen", notitie:"Ontwerp + realisatie", so:0, createdAt:"2026-03-05", updatedAt:"2026-03-28", ownerId:null},
+      d6:  {name:"VolkerWessels Vastgoed", tid:"t2", schaal:"Groot", contact:"Sandra Visser", notitie:"", so:1, createdAt:"2026-03-06", updatedAt:"2026-03-28", ownerId:null},
+      d7:  {name:"Greystar", tid:"t3", schaal:"Internationaal", contact:"Tom Wilson", notitie:"Residentieel, huurwoningen", so:0, createdAt:"2026-03-07", updatedAt:"2026-03-28", ownerId:null},
+      d8:  {name:"Bouwinvest", tid:"t3", schaal:"Groot", contact:"Anne de Groot", notitie:"Pensioenfonds-gefinancierd", so:1, createdAt:"2026-03-08", updatedAt:"2026-03-28", ownerId:null},
+      d9:  {name:"Stebru", tid:"t2", schaal:"Middel", contact:"Kees Brouwer", notitie:"Regio Rotterdam, design & build", so:2, createdAt:"2026-03-09", updatedAt:"2026-03-28", ownerId:null},
+      d10: {name:"Woonstad Rotterdam", tid:"t4", schaal:"Groot", contact:"Fatima El Amrani", notitie:"Woningcorporatie", so:1, createdAt:"2026-03-10", updatedAt:"2026-03-28", ownerId:null},
+      d11: {name:"Havensteder", tid:"t4", schaal:"Groot", contact:"Rob Pieterse", notitie:"Corporatie, focus Zuid-Holland", so:2, createdAt:"2026-03-11", updatedAt:"2026-03-28", ownerId:null},
+      d12: {name:"De Coöperatie", tid:"t5", schaal:"Klein", contact:"Marieke Bos", notitie:"CPO-begeleiding Rotterdam", so:0, createdAt:"2026-03-12", updatedAt:"2026-03-28", ownerId:null},
+      d13: {name:"KleurrijkWonen CPO", tid:"t5", schaal:"Klein", contact:"Youssef Amrani", notitie:"Collectief particulier, diverse groepen", so:1, createdAt:"2026-03-13", updatedAt:"2026-03-28", ownerId:null},
+      d14: {name:"LIFE Developers", tid:"t1", schaal:"Middel", contact:"Nina Mulder", notitie:"Betaalbaar, innovatief", so:3, createdAt:"2026-03-14", updatedAt:"2026-03-28", ownerId:null},
+      d15: {name:"RED Company", tid:"t3", schaal:"Middel", contact:"David Cohen", notitie:"Mixed-use, stedelijk", so:2, createdAt:"2026-03-15", updatedAt:"2026-03-28", ownerId:null}
+    });
+
+    // ─── Kansen ───
+    log('Kansen...');
+    await db.ref('kansen').set({
+      k1:  {name:"Wilhelminapier Kavel 9", cid:"c1", adres:"Wilhelminakade 100, Rotterdam", omvang:"4200", type:"Gemengd", contact:"Gemeente Rotterdam", notitie:"Laatste kavel op de pier, iconische locatie", so:0, createdAt:"2026-02-15", updatedAt:"2026-03-28", ownerId:null},
+      k2:  {name:"Hart van Zuid Fase 3", cid:"c1", adres:"Gooilandsingel 40, Rotterdam", omvang:"8500", type:"Wonen", contact:"Ballast Nedam", notitie:"Groot programma, mix sociaal/vrij", so:1, createdAt:"2026-02-20", updatedAt:"2026-03-28", ownerId:null},
+      k3:  {name:"Nieuw Mathenesse", cid:"c1", adres:"Mathenesserdijk 250, Rotterdam", omvang:"12000", type:"Wonen", contact:"Havenbedrijf Rotterdam", notitie:"Transformatie havengebied naar woonwijk", so:2, createdAt:"2026-03-01", updatedAt:"2026-03-28", ownerId:null},
+      k4:  {name:"Schieveste Torens", cid:"c2", adres:"Schiekade 500, Schiedam", omvang:"6200", type:"Wonen", contact:"Gemeente Schiedam", notitie:"Twee woontorens nabij station", so:0, createdAt:"2026-03-03", updatedAt:"2026-03-28", ownerId:null},
+      k5:  {name:"Merwe-Vierhavens Plot C", cid:"c1", adres:"Marconistraat 16, Rotterdam", omvang:"3800", type:"Kantoor", contact:"Gemeente Rotterdam", notitie:"Creative hub, nieuwe economie", so:3, createdAt:"2026-03-05", updatedAt:"2026-03-28", ownerId:null},
+      k6:  {name:"Holy Zuid", cid:"c3", adres:"Holylaan 100, Vlaardingen", omvang:"5400", type:"Wonen", contact:"Gemeente Vlaardingen", notitie:"Nieuwbouwwijk, grondgebonden", so:0, createdAt:"2026-03-07", updatedAt:"2026-03-28", ownerId:null},
+      k7:  {name:"Binckhorst Kavels", cid:"c4", adres:"Binckhorstlaan 200, Den Haag", omvang:"9000", type:"Gemengd", contact:"Gemeente Den Haag", notitie:"Grootste transformatie van NL", so:0, createdAt:"2026-03-08", updatedAt:"2026-03-28", ownerId:null},
+      k8:  {name:"Schieoevers Noord", cid:"c5", adres:"Schieweg 100, Delft", omvang:"7200", type:"Gemengd", contact:"Gemeente Delft", notitie:"Naast station, innovatiecampus", so:0, createdAt:"2026-03-10", updatedAt:"2026-03-28", ownerId:null},
+      k9:  {name:"Coolhaven Blok D", cid:"c1", adres:"Coolhaven 50, Rotterdam", omvang:"2100", type:"Collectief", contact:"Woonstad Rotterdam", notitie:"CPO-kavel, zelfbouwgroep gezocht", so:4, createdAt:"2026-03-12", updatedAt:"2026-03-28", ownerId:null},
+      k10: {name:"Zorgboulevard Overschie", cid:"c1", adres:"Overschiese Kleiweg 300, Rotterdam", omvang:"3200", type:"Zorg", contact:"Laurens Wonen", notitie:"Zorgwoningen + buurtfuncties", so:5, createdAt:"2026-03-14", updatedAt:"2026-03-28", ownerId:null},
+      k11: {name:"Retailpark Alexandrium", cid:"c1", adres:"Alexandrium 10, Rotterdam", omvang:"4500", type:"Retail", contact:"Unibail-Rodamco", notitie:"Transformatie retail naar mixed use", so:6, createdAt:"2026-03-16", updatedAt:"2026-03-28", ownerId:null},
+      k12: {name:"Kop van Feijenoord", cid:"c1", adres:"Stadionweg 1, Rotterdam", omvang:"15000", type:"Wonen", contact:"Feyenoord City", notitie:"Grootste gebiedsontwikkeling Rotterdam-Zuid", so:7, createdAt:"2026-03-18", updatedAt:"2026-03-28", ownerId:null}
+    });
+
+    // ─── Matches ───
+    // Financiële velden: bvo, bkm2, honPct, omzet (=bvo*bkm2), honorarium (=omzet*honPct/100)
+    // Vroege fases: vaak nog geen cijfers. Latere fases: steeds meer ingevuld.
+    log('Matches...');
+    await db.ref('matches').set({
+      // Potentiële matches — nog geen financiële data
+      m1: {kid:"k3", links:["d1","d4"], coals:[], stage:"matches", notitie:"Eerste kennismaking gehad", col:false, so:0, createdAt:"2026-03-15", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-15"}], ownerId:null, bvo:0, bkm2:0, honPct:0, omzet:0, honorarium:0},
+      m2: {kid:"k5", links:["d5"], coals:[], stage:"matches", notitie:"", col:false, so:1, createdAt:"2026-03-16", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-16"}], ownerId:null, bvo:0, bkm2:0, honPct:0, omzet:0, honorarium:0},
+      m3: {kid:"k7", links:[], coals:[["d3","d10"]], stage:"matches", notitie:"Coalitie AM + Woonstad verkent mogelijkheden", col:false, so:2, createdAt:"2026-03-17", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-17"}], ownerId:null, bvo:0, bkm2:0, honPct:0, omzet:0, honorarium:0},
+      m4: {kid:"k9", links:["d12","d13"], coals:[], stage:"matches", notitie:"CPO-partijen geïnteresseerd", col:false, so:3, createdAt:"2026-03-18", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-18"}], ownerId:null, bvo:0, bkm2:0, honPct:0, omzet:0, honorarium:0},
+
+      // Verkennend — deels ingevuld
+      m5: {kid:"k1", links:["d2","d7"], coals:[], stage:"verkennend", notitie:"Gesprek met BPD en Greystar gepland 15 april", col:false, so:0, createdAt:"2026-03-10", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-10"},{stage:"verkennend",at:"2026-03-20"}], ownerId:null,
+        bvo:4200, bkm2:2200, honPct:4, omzet:9240000, honorarium:369600},
+      m6: {kid:"k4", links:["d9"], coals:[], stage:"verkennend", notitie:"Stebru heeft interesse, wacht op programma van eisen", col:false, so:1, createdAt:"2026-03-12", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-12"},{stage:"verkennend",at:"2026-03-22"}], ownerId:null,
+        bvo:6200, bkm2:1800, honPct:4, omzet:11160000, honorarium:446400},
+      m7: {kid:"k6", links:["d1","d11"], coals:[], stage:"verkennend", notitie:"Heijmans + Havensteder verkennen samenwerking", col:false, so:2, createdAt:"2026-03-13", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-13"},{stage:"verkennend",at:"2026-03-23"}], ownerId:null,
+        bvo:0, bkm2:0, honPct:0, omzet:0, honorarium:0},
+
+      // Offerte — financieel helder
+      m8: {kid:"k2", links:["d2"], coals:[["d5","d6"]], stage:"offerte", notitie:"BPD trekt, Vorm+VolkerWessels als bouwcoalitie", col:false, so:0, createdAt:"2026-03-05", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-05"},{stage:"verkennend",at:"2026-03-15"},{stage:"offerte",at:"2026-03-25"}], ownerId:null,
+        bvo:8500, bkm2:2000, honPct:4, omzet:17000000, honorarium:680000},
+      m9: {kid:"k8", links:["d4","d15"], coals:[], stage:"offerte", notitie:"Synchroon + RED Company maken gezamenlijk voorstel", col:false, so:1, createdAt:"2026-03-08", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-08"},{stage:"verkennend",at:"2026-03-18"},{stage:"offerte",at:"2026-03-26"}], ownerId:null,
+        bvo:7200, bkm2:2100, honPct:3.5, omzet:15120000, honorarium:529200},
+
+      // Actief — volledig
+      m10: {kid:"k12", links:["d1","d3"], coals:[["d8","d10"]], stage:"actief", notitie:"Ontwerp in volle gang, oplevering Q4 2027", col:false, so:0, createdAt:"2026-01-15", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-01-15"},{stage:"verkennend",at:"2026-02-01"},{stage:"offerte",at:"2026-02-20"},{stage:"actief",at:"2026-03-10"}], ownerId:null,
+        bvo:15000, bkm2:1900, honPct:4, omzet:28500000, honorarium:1140000}
+    });
+
+    log('');
+    log('✅ Testdata geladen!');
+    log('');
+    log('Verwachte pipeline-waarden:');
+    log('  Matches:    4 items, €0 honorarium');
+    log('  Verkennend: 3 items, €816K honorarium (25% = €204K)');
+    log('  Offerte:    2 items, €1.2M honorarium (50% = €605K)');
+    log('  Actief:     1 item,  €1.1M honorarium (100% = €1.1M)');
+    log('  Totaal verwacht: ~€1.9M');
+    log('');
+    log('Ga naar de app en ververs de pagina.');
+
+    this.textContent = 'Klaar!';
+    this.style.background = '#007b2f';
+    this.style.color = '#fff';
+  } catch(e) {
+    log('❌ Fout: ' + e.message);
+    this.textContent = 'Fout!';
+    this.style.background = '#c22d0b';
+    this.style.color = '#fff';
+  }
+};
+</script>
+</body></html>
