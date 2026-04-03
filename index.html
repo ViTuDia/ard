@@ -1205,8 +1205,8 @@ function renderMatchCard(c, match, stage, devs, dts) {
 
 function renderFooter(c) {
   return `<div class="footer">
-    <span><span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'}"></span><span style="color:${c.geel};font-weight:500">/ </span>ARD / AtelierRuimDenkers \u2014 De Koppelbaas</span>
-    <span>Willem Buytewechstraat 45, Rotterdam</span>
+    <span><span style="color:${c.geel};font-weight:500">/ </span>ARD / AtelierRuimDenkers \u2014 De Koppelbaas</span>
+    <span>Willem Buytewechstraat 45, Rotterdam <span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin-right:0;margin-left:6px"></span></span>
   </div>`;
 }
 
