@@ -2371,6 +2371,18 @@ function setupEventListeners() {
         if (children.length > 0) {
           const pos2 = clientY < refEl.getBoundingClientRect().top + refEl.getBoundingClientRect().height / 2 ? 'before' : 'after';
           refEl = pos2 === 'before' ? children[0] : children[children.length - 1];
+        } else {
+          // Lege categorie: toon indicator bovenaan cat-items (net onder de header)
+          const catRect = refEl.getBoundingClientRect();
+          const tid = dropTarget.dataset.dragId + ':empty';
+          if (tid !== lastIndicatorId) {
+            lastIndicatorId = tid;
+            dragInd.style.left = catRect.left + 'px';
+            dragInd.style.width = catRect.width + 'px';
+            dragInd.style.top = (catRect.top + 4) + 'px';
+            dragInd.style.display = 'block';
+          }
+          return;
         }
       }
 
