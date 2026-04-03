@@ -4,7 +4,7 @@
 Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontwikkelaars aan kansen (vastgoedprojecten) tot matches die door een kanban-pipeline bewegen.
 
 ## Technische stack
-- Single-file vanilla JS app: `index.html` (~2500+ regels)
+- Single-file vanilla JS app: `index.html` (~2900+ regels)
 - Firebase Realtime Database (project: atelierruimdenkers-d47d6)
 - GitHub Pages hosting: https://vitudia.github.io/koppelbaas/
 - SHA-256 wachtwoord auth, dark mode, CSS custom properties
@@ -18,8 +18,8 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 
 ## Git
 - Repo: vitudia/koppelbaas (private)
-- Branch: claude/review-instructions-plan-PRq6N
-- GitHub MCP tools geven 403/404 sinds repo private is → push direct naar main
+- Feature branch: claude/general-work-iTEUt (wordt gemerged naar main)
+- Wijzigingen altijd naar main pushen voor GitHub Pages deploy
 
 ## Voltooide features
 - Complete kanban board (4 stages: matches, verkennend, offerte, actief)
@@ -27,25 +27,41 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Kansen-paneel met categorie-groepen, in/uitklappen
 - Match-kaarten met coalities, stage gates, alarmsysteem
 - Drag & drop: desktop (HTML5) + touch (iOS polyfill met 200ms hold)
-- Drag reorder: matches in pipeline, devTypes, kansCats, devs, kansen tussen categorieën
-- Resizable divider tussen panelen en pipeline
+- Drag reorder: matches in pipeline, devTypes, kansCats, devs, kansen binnen én tussen categorieën
+- Drag indicator: single fixed-positioned element, gap-centered, met geel bolletje (open cirkel)
+- Kans naar pipeline slepen → opent pickDevs modal voor match-aanmaak
+- Resizable divider tussen panelen en pipeline (standaard 600px: 300px per paneel)
 - Cat-group visuele hiërarchie (achtergrond containers voor categorieën)
+- Pipeline-kolommen met subtiele stage-kleur achtergrond (6% opacity), borders doorlopend tot footer
 - Dark mode met 30+ kleurvariabelen
 - Admin menu: wachtwoord wijzigen, backup/import, uitloggen
 - Login flow: auto-detect setup als geen hash, 4s timeout fallback
 - Mobiel: tab-navigatie, stage-tabs, move-knoppen, geen selectie-highlight
-- 10 UX features: toast, zoekbalk, escape, dubbelklik, swipe tabs, haptic, verbindingsindicator, lege-kolom berichten, dirty-modal warning, tab-tellers
+- Lock-modus per match-kaart: vergrendelde kaarten niet versleepbaar naar andere kolom, slotje rechtsonder
+- Confirm-modals bij ontkoppelen ontwikkelaar en verwijderen coalitie (styled, geen native confirm)
+- Zoekbalken met ✕ clear-knop (CSS :not(:placeholder-shown))
+- Scroll-behoud bij toggle dev in pick/coalition/editMatch modals (id="modal-scroll-list")
+- Header-knoppen: uniforme hoogte (34px), vaste breedte icon-knoppen (36px), 18px iconen
+- Mobiel: single-tap werkt (geen render bij niet-drag touchend), touch drag transparantie 0.15
+- Verbindingsindicator rechtsonder in footer
+- 10+ UX features: toast, zoekbalk, escape, dubbelklik, swipe tabs, haptic, lege-kolom berichten, dirty-modal warning, tab-tellers
 - Print: landscape, geen marges
-- seed.html voor testdata
+
+## Gepland (nog niet geïmplementeerd)
+- Verwachte omzet tracking: per match omzet + honorarium, instelbare conversie-% per stage, gewogen pipeline-waarde in header + per kolom. Plan staat klaar.
 
 ## Bekende aandachtspunten
 - Print preview kan nog beter (was eerder leeg, nu gefixed maar niet grondig getest)
-- Sortering devs/kansen binnen categorie via drag werkt, maar ▲/▼ knoppen ontbreken (spec: optioneel)
+- ▲/▼ knoppen voor sortering ontbreken (spec: optioneel, drag werkt)
 - Firebase API key is publiek (by design), beveiligd via HTTP referrer restriction
+- Bij custom domain (bijv. koppelbaas.atelierruimdenkers.nl) moet de referrer restriction uitgebreid worden
+
+## Development workflow
+- Na elke JS-wijziging: syntax check met `node --check` op extracted script
+- Altijd mergen naar main en pushen voor GitHub Pages deploy
+- Footer is static (niet fixed) zodat kolom-borders doorlopen
 
 ## Bestanden
 - `/home/user/koppelbaas/index.html` — de volledige app
-- `/home/user/koppelbaas/seed.html` — testdata loader
 - `/home/user/koppelbaas/database.rules.json` — Firebase rules
 - `/home/user/koppelbaas/firebase.json` — hosting config
-- `/home/user/koppelbaas/INSTRUCTIES/` — specificatie + React prototype
