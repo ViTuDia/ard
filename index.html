@@ -445,9 +445,10 @@ function honDefaults() {
   return { bkm2: hd?.bkm2 ?? 2000, honPct: hd?.honPct ?? 4 };
 }
 function calcHon(md) {
+  const hd = honDefaults();
   const bvo = Number(md.bvo) || 0;
-  const bkm2 = Number(md.bkm2) || 0;
-  const honPct = Number(md.honPct) || 0;
+  const bkm2 = Number(md.bkm2) || hd.bkm2;
+  const honPct = md.honPct != null && md.honPct !== 0 ? Number(md.honPct) : hd.honPct;
   const omzet = Math.round(bvo * bkm2);
   const honorarium = Math.round(omzet * honPct / 100);
   return { omzet, honorarium };
@@ -1344,10 +1345,10 @@ function renderEditMatchModal(c) {
       <div style="padding:7px 10px;background:${c.lichtgrijs};cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:500;color:${c.grijs}" data-action="toggleCalc">\uD83D\uDCB0 Honorariumcalculator <span style="font-size:9px">${md._calcOpen?'\u25B2':'\u25BC'}</span></div>
       ${md._calcOpen ? `<div style="padding:10px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="field" style="margin-bottom:0"><label>Bouwkosten/m\u00B2 (\u20AC)</label><input type="number" min="0" data-calcfield="bkm2" value="${md.bkm2||''}" oninput="KB.mfCalc('bkm2',this.value?Number(this.value):0)"></div>
-          <div class="field" style="margin-bottom:0"><label>Honorarium %</label><input type="number" min="0" max="100" step="0.5" data-calcfield="honPct" value="${md.honPct||''}" oninput="KB.mfCalc('honPct',this.value?Number(this.value):0)"></div>
+          <div class="field" style="margin-bottom:0"><label>Bouwkosten/m\u00B2 (\u20AC)</label><input type="number" min="0" data-calcfield="bkm2" value="${md.bkm2||''}" placeholder="${honDefaults().bkm2}" oninput="KB.mfCalc('bkm2',this.value?Number(this.value):0)"></div>
+          <div class="field" style="margin-bottom:0"><label>Honorarium %</label><input type="number" min="0" max="100" step="0.5" data-calcfield="honPct" value="${md.honPct||''}" placeholder="${honDefaults().honPct}" oninput="KB.mfCalc('honPct',this.value?Number(this.value):0)"></div>
         </div>
-        ${(md.bvo && md.bkm2) ? `<div style="font-size:10px;color:${c.grijs};font-weight:300">${md.bvo}m\u00B2 \u00D7 \u20AC${(md.bkm2||0).toLocaleString('nl-NL')} = ${fmtEuro(md.bvo*md.bkm2)} bouwkosten \u2192 ${md.honPct||0}% = ${fmtEuro(Math.round(md.bvo*md.bkm2*(md.honPct||0)/100))}</div>` : ''}
+        ${md.bvo ? (() => { const r = calcHon(md); return `<div style="font-size:10px;color:${c.grijs};font-weight:300">${md.bvo}m\u00B2 \u00D7 \u20AC${(md.bkm2||honDefaults().bkm2).toLocaleString('nl-NL')} = ${fmtEuro(r.omzet)} bouwkosten \u2192 ${md.honPct||honDefaults().honPct}% = ${fmtEuro(r.honorarium)}</div>`; })() : ''}
       </div>` : ''}
     </div>
     <div class="field"><label>Notitie</label><textarea oninput="KB.mf('notitie',this.value)">${esc(md.notitie||'')}</textarea></div>
@@ -1970,8 +1971,30 @@ function setupEventListeners() {
       }
       case 'saveHonDefaults': {
         const md = STATE.ui.modalData; if (!md) break;
-        fbUpdate('meta/honDefaults', {bkm2:md.def_bkm2||2000,honPct:md.def_honPct||4}).then(() => {
-          md.honMsg = 'Standaardwaarden opgeslagen!'; md.honOk = true; renderModal();
+        const newBkm2 = md.def_bkm2 || 2000;
+        const newHonPct = md.def_honPct || 4;
+        fbUpdate('meta/honDefaults', {bkm2:newBkm2,honPct:newHonPct}).then(() => {
+          // Herbereken alle matches die op defaults draaien (bkm2=0 of honPct=0)
+          const updates = {};
+          objToArr(STATE.data.matches).forEach(m => {
+            if (m.bvo && (!m.bkm2 || !m.honPct)) {
+              const bkm2 = m.bkm2 || newBkm2;
+              const honPct = m.honPct || newHonPct;
+              const omzet = Math.round(m.bvo * bkm2);
+              const honorarium = Math.round(omzet * honPct / 100);
+              if (honorarium !== (m.honorarium||0) || omzet !== (m.omzet||0)) {
+                updates[`matches/${m.id}/omzet`] = omzet;
+                updates[`matches/${m.id}/honorarium`] = honorarium;
+              }
+            }
+          });
+          if (Object.keys(updates).length > 0) {
+            fbMulti(updates);
+            md.honMsg = `Opgeslagen! ${Object.keys(updates).length/2|0} match(es) herberekend.`;
+          } else {
+            md.honMsg = 'Standaardwaarden opgeslagen!';
+          }
+          md.honOk = true; renderModal();
         }).catch(err => { md.honMsg = 'Fout: '+err.message; md.honOk = false; renderModal(); });
         break;
       }
@@ -2102,8 +2125,8 @@ function setupEventListeners() {
           STATE.ui.modal = 'editMatch';
           STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0),
-            bkm2: m.bkm2 || hd.bkm2,
-            honPct: m.honPct ?? hd.honPct,
+            bkm2: m.bkm2 || 0,
+            honPct: m.honPct || 0,
             _calcOpen: false
           };
           STATE.ui.modalExtra = null; renderModal();
