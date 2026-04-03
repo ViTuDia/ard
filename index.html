@@ -201,10 +201,10 @@
       /* App: ruimte voor vaste tab-balk onderaan */
       #app { height: calc(100vh - 52px); }
 
-      /* Main: stacked i.p.v. naast elkaar */
-      .main { flex-direction: column; overflow: visible; }
-      .left-panels { width: 100%; flex-direction: column; border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
-      .panel { width: 100%; padding: 12px; }
+      /* Main: stacked, overflow hidden zodat flex scroll-keten werkt */
+      .main { flex-direction: column; overflow: hidden; }
+      .left-panels { width: 100%; flex-direction: column; border-right: none; border-bottom: 1px solid var(--zachtgrijs); flex: 1; min-height: 0; }
+      .panel { width: 100%; padding: 12px; flex: 1; min-height: 0; }
       .panel:first-child { border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
 
       /* Mobiele tab-navigatie */
@@ -234,7 +234,7 @@
       body.mob-view-pipeline .main .pipeline { display: flex; flex-direction: column; }
 
       /* Pipeline kolommen: stacked met tabs */
-      .pipeline { flex-direction: column; overflow-x: visible; }
+      .pipeline { flex-direction: column; overflow: hidden; }
       .pipe-col { min-width: unset; border-right: none; border-bottom: 1px solid var(--zachtgrijs); }
       .pipe-col:last-child { border-bottom: none; }
       .pipe-col-body { padding: 8px 8px 16px; }
