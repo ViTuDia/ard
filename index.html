@@ -1956,7 +1956,12 @@ function setupEventListeners() {
         const sel = STATE.ui.modalData.selectedDevs;
         const idx = sel.indexOf(id);
         if (idx >= 0) sel.splice(idx,1); else sel.push(id);
-        renderModal(); break;
+        const scrollEl = document.querySelector('.modal-body [style*="overflow-y:auto"]');
+        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+        renderModal();
+        const scrollEl2 = document.querySelector('.modal-body [style*="overflow-y:auto"]');
+        if (scrollEl2) scrollEl2.scrollTop = scrollTop;
+        break;
       }
       case 'confirmMatch': {
         const {kansId, stage} = STATE.ui.modalExtra;
@@ -2039,7 +2044,12 @@ function setupEventListeners() {
         const sel = STATE.ui.modalData.selectedDevs;
         const idx = sel.indexOf(id);
         if (idx >= 0) sel.splice(idx,1); else sel.push(id);
-        renderModal(); break;
+        const scrollEl = document.querySelector('.modal-body [style*="overflow-y:auto"]');
+        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+        renderModal();
+        const scrollEl2 = document.querySelector('.modal-body [style*="overflow-y:auto"]');
+        if (scrollEl2) scrollEl2.scrollTop = scrollTop;
+        break;
       }
       case 'saveCoalition': {
         const {mid, cidx, editing} = STATE.ui.modalExtra;
