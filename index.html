@@ -1125,7 +1125,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
   html += `<span style="font-weight:500;font-size:14px;line-height:1.3;flex:1;min-width:0">${esc(kans.name)}</span>`;
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0">(${tl})</span>`;
   if (match.locked) html += `<span style="font-size:11px;color:${c.grijs};flex-shrink:0;opacity:0.5" title="Vergrendeld">\uD83D\uDD12</span>`;
-  html += match.honorarium ? `<span style="font-size:10px;flex-shrink:0;opacity:0.7" title="${fmtEuro(match.honorarium)}">\uD83D\uDCB0</span>` : `<span style="font-size:10px;flex-shrink:0;opacity:0.2" title="Geen honorarium ingevuld">\uD83D\uDCB0</span>`;
+  html += match.honorarium ? `<span style="font-size:10px;flex-shrink:0" title="${fmtEuro(match.honorarium)}">\uD83D\uDCB0</span>` : `<span style="font-size:10px;flex-shrink:0;position:relative;opacity:0.5" title="Geen honorarium ingevuld">\uD83D\uDCB0<span style="position:absolute;left:0;right:0;top:50%;height:1.5px;background:${c.rood};transform:rotate(-45deg)"></span></span>`;
   html += `<span class="stage-badge" style="color:${sc};background:${sb};border:1px solid ${sc}33">${esc(stage.short)}</span>`;
   html += '</div>';
 
