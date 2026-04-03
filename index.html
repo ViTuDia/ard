@@ -2693,6 +2693,8 @@ function setupEventListeners() {
     clearTimeout(touchHoldTimer);
     if (!touchDragEl) return;
 
+    const wasDragging = touchReady || touchClone;
+
     if (touchClone) {
       const touch = e.changedTouches[0];
       touchClone.remove();
@@ -2704,7 +2706,10 @@ function setupEventListeners() {
     }
     if (touchDragEl) touchDragEl.style.opacity = '1';
     touchDragEl = null; touchData = null; touchReady = false;
-    dragCleanup();
+
+    // Alleen cleanup+render als er echt een drag was, anders blokkeert render() het click-event
+    if (wasDragging) dragCleanup();
+    else { dragType = null; dragSrcId = null; }
   });
 }
 
