@@ -2349,55 +2349,61 @@ function setupEventListeners() {
   function showIndicatorAt(targetEl, clientY) {
     if (!targetEl) return;
     const dropTarget = findDropTargetAt(targetEl);
-    if (dropTarget && dropTarget.dataset.dragId !== dragSrcId && wouldChangePosition(targetEl, clientY)) {
-      // Bepaal het referentie-element voor positionering
-      let refEl;
-      if (dragType === 'devType') refEl = dropTarget.closest('[data-devtype-group]');
-      else if (dragType === 'kansCat') refEl = dropTarget.closest('[data-kanscat-group]');
-      else if (dragType === 'kans') {
-        refEl = dropTarget.closest('[data-drag-type="kans"]');
-        if (!refEl) { const grp = dropTarget.closest('[data-kanscat-group]'); refEl = grp ? grp.querySelector('.cat-items') : null; }
-      }
-      else if (dragType === 'dev') {
-        refEl = dropTarget.closest('[data-drag-type="dev"]');
-        if (!refEl) { const grp = dropTarget.closest('[data-devtype-group]'); refEl = grp ? grp.querySelector('.cat-items') : null; }
-      }
-      else refEl = dropTarget;
-      if (!refEl) { if (lastIndicatorId) clearDragIndicators(); return; }
+    if (!dropTarget || dropTarget.dataset.dragId === dragSrcId) {
+      if (lastIndicatorId) clearDragIndicators();
+      return;
+    }
 
-      // Als refEl een cat-items container is, gebruik de eerste/laatste kaart binnenin
-      if (refEl.classList.contains('cat-items')) {
-        const children = Array.from(refEl.children).filter(c => !c.hasAttribute('data-empty'));
-        if (children.length > 0) {
-          const pos2 = clientY < refEl.getBoundingClientRect().top + refEl.getBoundingClientRect().height / 2 ? 'before' : 'after';
-          refEl = pos2 === 'before' ? children[0] : children[children.length - 1];
-        } else {
-          // Lege categorie: toon indicator bovenaan cat-items (net onder de header)
-          const catRect = refEl.getBoundingClientRect();
-          const tid = dropTarget.dataset.dragId + ':empty';
-          if (tid !== lastIndicatorId) {
-            lastIndicatorId = tid;
-            dragInd.style.left = catRect.left + 'px';
-            dragInd.style.width = catRect.width + 'px';
-            dragInd.style.top = (catRect.top + 4) + 'px';
-            dragInd.style.display = 'block';
-          }
-          return;
+    // Bepaal het referentie-element voor positionering
+    let refEl;
+    if (dragType === 'devType') refEl = dropTarget.closest('[data-devtype-group]');
+    else if (dragType === 'kansCat') refEl = dropTarget.closest('[data-kanscat-group]');
+    else if (dragType === 'kans') {
+      refEl = dropTarget.closest('[data-drag-type="kans"]');
+      if (!refEl) { const grp = dropTarget.closest('[data-kanscat-group]'); refEl = grp ? grp.querySelector('.cat-items') : null; }
+    }
+    else if (dragType === 'dev') {
+      refEl = dropTarget.closest('[data-drag-type="dev"]');
+      if (!refEl) { const grp = dropTarget.closest('[data-devtype-group]'); refEl = grp ? grp.querySelector('.cat-items') : null; }
+    }
+    else refEl = dropTarget;
+    if (!refEl) { if (lastIndicatorId) clearDragIndicators(); return; }
+
+    // Als refEl een cat-items container is, gebruik de eerste/laatste kaart binnenin
+    if (refEl.classList.contains('cat-items')) {
+      const children = Array.from(refEl.children).filter(c => !c.hasAttribute('data-empty'));
+      if (children.length > 0) {
+        const pos2 = clientY < refEl.getBoundingClientRect().top + refEl.getBoundingClientRect().height / 2 ? 'before' : 'after';
+        refEl = pos2 === 'before' ? children[0] : children[children.length - 1];
+      } else {
+        // Lege categorie: toon indicator bovenaan cat-items (net onder de header)
+        const catRect = refEl.getBoundingClientRect();
+        const tid = dropTarget.dataset.dragId + ':empty';
+        if (tid !== lastIndicatorId) {
+          lastIndicatorId = tid;
+          dragInd.style.left = catRect.left + 'px';
+          dragInd.style.width = catRect.width + 'px';
+          dragInd.style.top = (catRect.top + 4) + 'px';
+          dragInd.style.display = 'block';
         }
+        return;
       }
+    }
 
-      const rect = refEl.getBoundingClientRect();
+    const rect = refEl.getBoundingClientRect();
 
-      // Dead zone voor match-kaarten: alleen indicator in bovenste/onderste 30%
-      if (dragType === 'match' && rect.height > 50) {
-        const edgeZone = rect.height * 0.3;
-        if (clientY > rect.top + edgeZone && clientY < rect.bottom - edgeZone) {
-          if (lastIndicatorId) clearDragIndicators();
-          return;
-        }
+    // Bepaal positie: probeer cursor-positie, als die niet geldig is probeer de andere kant
+    let pos = clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    if (!wouldChangePosition(targetEl, clientY)) {
+      // Probeer de andere positie (simuleer cursor aan andere kant van midpoint)
+      const fakeY = pos === 'before' ? rect.bottom : rect.top;
+      if (wouldChangePosition(targetEl, fakeY)) {
+        pos = pos === 'before' ? 'after' : 'before';
+      } else {
+        if (lastIndicatorId) clearDragIndicators();
+        return;
       }
-
-      const pos = clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    }
       const tid = dropTarget.dataset.dragId + ':' + pos;
       if (tid !== lastIndicatorId) {
         lastIndicatorId = tid;
