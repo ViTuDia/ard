@@ -2323,7 +2323,11 @@ function setupEventListeners() {
     if (dropTarget && dropTarget.dataset.dragId !== dragSrcId && wouldChangePosition(targetEl, clientY)) {
       let indicatorParent;
       if (dragType === 'devType') indicatorParent = dropTarget.closest('[data-devtype-group]');
-      else if (dragType === 'kansCat' || dragType === 'kans') indicatorParent = dropTarget.closest('[data-kanscat-group]');
+      else if (dragType === 'kansCat') indicatorParent = dropTarget.closest('[data-kanscat-group]');
+      else if (dragType === 'kans') {
+        const grp = dropTarget.closest('[data-kanscat-group]');
+        indicatorParent = grp ? grp.querySelector('.cat-items') : null;
+      }
       else if (dragType === 'dev') indicatorParent = dropTarget.closest('[data-drag-type="dev"]') || dropTarget;
       else indicatorParent = dropTarget;
       if (!indicatorParent) { if (lastIndicatorId) clearDragIndicators(); return; }
@@ -2347,7 +2351,14 @@ function setupEventListeners() {
         lastIndicatorId = tid;
         const indicator = document.createElement('div');
         indicator.className = 'drag-indicator';
-        if (pos === 'before') {
+        if (dragType === 'kans') {
+          // Kans: indicator binnen cat-items container
+          if (pos === 'before') {
+            indicatorParent.insertBefore(indicator, indicatorParent.firstChild);
+          } else {
+            indicatorParent.appendChild(indicator);
+          }
+        } else if (pos === 'before') {
           indicatorParent.parentNode.insertBefore(indicator, indicatorParent);
         } else {
           indicatorParent.parentNode.insertBefore(indicator, indicatorParent.nextSibling);
