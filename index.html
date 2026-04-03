@@ -794,6 +794,7 @@ KB.mobStageSwitch = function(stage) {
 };
 KB.mobMove = function(matchId, toStage) {
   const m = STATE.data.matches[matchId]; if (!m) return;
+  if (m.locked) { showToast('Kaart is vergrendeld'); return; }
   const oldIdx = STAGE_ORDER[m.stage] || 0;
   const newIdx = STAGE_ORDER[toStage] || 0;
   if (newIdx > oldIdx && STAGE_GATES[toStage]) {
@@ -1117,6 +1118,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
   html += `<span style="font-size:14px;color:${c.grijs};flex-shrink:0;padding:2px 4px" data-action="toggleMatchCollapse" data-id="${match.id}">${isC?'\u25B8':'\u25BE'}</span>`;
   html += `<span style="font-weight:500;font-size:14px;line-height:1.3;flex:1;min-width:0">${esc(kans.name)}</span>`;
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0">(${tl})</span>`;
+  if (match.locked) html += `<span style="font-size:11px;color:${c.grijs};flex-shrink:0;opacity:0.5" title="Vergrendeld">\uD83D\uDD12</span>`;
   html += `<span class="stage-badge" style="color:${sc};background:${sb};border:1px solid ${sc}33">${esc(stage.short)}</span>`;
   html += '</div>';
 
@@ -1181,17 +1183,20 @@ function renderMatchCard(c, match, stage, devs, dts) {
     html += `<div style="border-top:1px solid ${c.zachtgrijs};margin-top:6px;padding-top:6px;display:flex;gap:5px;flex-wrap:wrap" data-noprint>`;
     html += `<button title="Coalitie toevoegen" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="addCoalition" data-mid="${match.id}">+ coalitie</button>`;
     html += `<button title="Match bewerken" style="font-size:11px;background:${c.lichtgrijs};border:none;border-radius:3px;padding:3px 8px;cursor:pointer;color:${c.txtPrimary};font-family:inherit;min-height:32px" data-action="editMatch" data-id="${match.id}">\u270E bewerk</button>`;
+    html += `<button title="${match.locked?'Ontgrendel':'Vergrendel'}" style="font-size:11px;background:${match.locked?c.geel+'15':c.lichtgrijs};border:${match.locked?'1px solid '+c.geel+'33':'none'};border-radius:3px;padding:3px 8px;cursor:pointer;color:${match.locked?c.geel:c.grijs};font-family:inherit;min-height:32px" data-action="toggleLock" data-id="${match.id}">${match.locked?'\uD83D\uDD12':'\uD83D\uDD13'}</button>`;
     html += '</div>';
 
     // Mobiele verplaats-knoppen (vervangt drag & drop)
     if (isMob()) {
       html += `<div class="mob-move-btns" data-noprint>`;
-      STAGES.forEach(s => {
-        if (s.id !== stage.id) {
-          const sc2 = stageColor(s.id);
-          html += `<button class="mob-move-btn" style="border-color:${sc2};color:${sc2}" onclick="KB.mobMove('${match.id}','${s.id}')">\u2192 ${esc(s.short)}</button>`;
-        }
-      });
+      if (!match.locked) {
+        STAGES.forEach(s => {
+          if (s.id !== stage.id) {
+            const sc2 = stageColor(s.id);
+            html += `<button class="mob-move-btn" style="border-color:${sc2};color:${sc2}" onclick="KB.mobMove('${match.id}','${s.id}')">\u2192 ${esc(s.short)}</button>`;
+          }
+        });
+      }
       html += `<button class="mob-move-btn" style="border-color:${c.rood};color:${c.rood}" onclick="KB.mobUnmatch('${match.id}')">\u2715 Unmatch</button>`;
       html += '</div>';
     }
@@ -1829,6 +1834,9 @@ function setupEventListeners() {
         render(); break;
       case 'toggleMatchCollapse':
         fbUpdate(`matches/${id}`, {col: !(STATE.data.matches[id]?.col)});
+        break;
+      case 'toggleLock':
+        fbUpdate(`matches/${id}`, {locked: !(STATE.data.matches[id]?.locked)});
         break;
 
       // Header
@@ -2621,6 +2629,7 @@ function setupEventListeners() {
     } else if (col && data.type === 'match') {
       const newStage = col.dataset.stage;
       const m = STATE.data.matches[data.id]; if (!m) return;
+      if (m.locked && m.stage !== newStage) { showToast('Kaart is vergrendeld'); return; }
       if (m.stage === newStage) {
         const targetCard = targetEl.closest('[data-drag-type="match"]');
         if (targetCard && targetCard.dataset.dragId !== data.id) {
