@@ -135,8 +135,11 @@
     .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
 
     /* Zoekbalk in panelen */
-    .panel-search { width: 100%; padding: 6px 8px; font-size: 11px; border: 1px solid var(--inputBorder); border-radius: 3px; font-family: inherit; color: var(--txtPrimary); background: var(--kaart); margin-bottom: 8px; }
+    .panel-search-wrap { position: relative; margin-bottom: 8px; }
+    .panel-search { width: 100%; padding: 6px 26px 6px 8px; font-size: 11px; border: 1px solid var(--inputBorder); border-radius: 3px; font-family: inherit; color: var(--txtPrimary); background: var(--kaart); }
     .panel-search:focus { outline: none; border-color: var(--geel); }
+    .panel-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 14px; color: var(--grijs); cursor: pointer; padding: 0 2px; line-height: 1; display: none; }
+    .panel-search:not(:placeholder-shown) + .panel-search-clear { display: block; }
 
     /* Lege kolom boodschap */
     .empty-col-msg { text-align: center; padding: 20px 10px; color: var(--grijs); font-size: 11px; font-weight: 300; font-style: italic; }
@@ -857,7 +860,7 @@ function renderDevsPanel(c, devs, dts, matches) {
   html += '<div class="panel-header"><span class="panel-title">Ontwikkelaars</span>';
   html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
   html += '<div class="panel-sub">Klik om koppelingen te zien.</div>';
-  html += `<input class="panel-search" placeholder="\uD83D\uDD0D Zoek ontwikkelaar..." value="${esc(STATE.ui.searchDevs)}" oninput="STATE.ui.searchDevs=this.value;render();" data-noprint>`;
+  html += `<div class="panel-search-wrap" data-noprint><input class="panel-search" placeholder="\uD83D\uDD0D Zoek ontwikkelaar..." value="${esc(STATE.ui.searchDevs)}" oninput="STATE.ui.searchDevs=this.value;render();"><button class="panel-search-clear" onclick="STATE.ui.searchDevs='';render();">\u2715</button></div>`;
 
   // Per type-groep
   dts.forEach(type => {
@@ -938,7 +941,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   html += '</div>';
   html += '<button data-noprint title="Nieuwe kans toevoegen" class="btn btn-black btn-sm" data-action="addKans">+ Nieuw</button></div>';
   html += `<div class="panel-sub">${dragKansen ? '<span style="color:'+c.geel+';font-weight:500">Loslaten = match ontkoppelen</span>' : 'Koppel aan ontwikkelaar \u2192 match.'}</div>`;
-  html += `<input class="panel-search" placeholder="\uD83D\uDD0D Zoek kans..." value="${esc(STATE.ui.searchKansen)}" oninput="STATE.ui.searchKansen=this.value;render();" data-noprint>`;
+  html += `<div class="panel-search-wrap" data-noprint><input class="panel-search" placeholder="\uD83D\uDD0D Zoek kans..." value="${esc(STATE.ui.searchKansen)}" oninput="STATE.ui.searchKansen=this.value;render();"><button class="panel-search-clear" onclick="STATE.ui.searchKansen='';render();">\u2715</button></div>`;
 
   if (dragKansen) {
     html += '<div class="drop-zone-active">Hier loslaten</div>';
@@ -2362,6 +2365,15 @@ function setupEventListeners() {
       else refEl = dropTarget;
       if (!refEl) { if (lastIndicatorId) clearDragIndicators(); return; }
 
+      // Als refEl een cat-items container is, gebruik de eerste/laatste kaart binnenin
+      if (refEl.classList.contains('cat-items')) {
+        const children = Array.from(refEl.children).filter(c => !c.hasAttribute('data-empty'));
+        if (children.length > 0) {
+          const pos2 = clientY < refEl.getBoundingClientRect().top + refEl.getBoundingClientRect().height / 2 ? 'before' : 'after';
+          refEl = pos2 === 'before' ? children[0] : children[children.length - 1];
+        }
+      }
+
       const rect = refEl.getBoundingClientRect();
 
       // Dead zone voor match-kaarten: alleen indicator in bovenste/onderste 30%
@@ -2465,9 +2477,24 @@ function setupEventListeners() {
       const kans = STATE.data.kansen[data.id];
       if (!kans) return;
       if (kans.cid !== newCid) {
-        // Andere categorie: update cid + so
-        const newSo = objToArr(STATE.data.kansen).filter(k => k.cid === newCid).length;
-        fbUpdate(`kansen/${data.id}`, {cid: newCid, so: newSo, updatedAt: today()});
+        // Andere categorie: bepaal invoegpositie
+        const targetKans = targetEl.closest('[data-drag-type="kans"]');
+        const tk = sortedArr(STATE.data.kansen).filter(k => k.cid === newCid);
+        let newSo = tk.length; // default: onderaan
+        if (targetKans) {
+          const targetIdx = tk.findIndex(k => k.id === targetKans.dataset.dragId);
+          if (targetIdx >= 0) {
+            const rect = targetKans.getBoundingClientRect();
+            newSo = clientY < rect.top + rect.height / 2 ? targetIdx : targetIdx + 1;
+          }
+        }
+        // Hernum bestaande items om ruimte te maken
+        const updates = {};
+        tk.forEach((k, i) => { const so = i >= newSo ? i + 1 : i; updates[`kansen/${k.id}/so`] = so; });
+        updates[`kansen/${data.id}/cid`] = newCid;
+        updates[`kansen/${data.id}/so`] = newSo;
+        updates[`kansen/${data.id}/updatedAt`] = today();
+        fbMulti(updates);
       } else {
         // Reorder binnen zelfde categorie
         const targetKans = targetEl.closest('[data-drag-type="kans"]');
@@ -2500,9 +2527,24 @@ function setupEventListeners() {
       const dev = STATE.data.devs[data.id];
       if (!dev) return;
       if (dev.tid !== newTid) {
-        // Andere categorie: update tid + so
-        const newSo = objToArr(STATE.data.devs).filter(d => d.tid === newTid).length;
-        fbUpdate(`devs/${data.id}`, {tid: newTid, so: newSo, updatedAt: today()});
+        // Andere categorie: bepaal invoegpositie
+        const targetDev = targetEl.closest('[data-drag-type="dev"]');
+        const td = sortedArr(STATE.data.devs).filter(d => d.tid === newTid);
+        let newSo = td.length; // default: onderaan
+        if (targetDev) {
+          const targetIdx = td.findIndex(d => d.id === targetDev.dataset.dragId);
+          if (targetIdx >= 0) {
+            const rect = targetDev.getBoundingClientRect();
+            newSo = clientY < rect.top + rect.height / 2 ? targetIdx : targetIdx + 1;
+          }
+        }
+        // Hernum bestaande items om ruimte te maken
+        const updates = {};
+        td.forEach((d, i) => { const so = i >= newSo ? i + 1 : i; updates[`devs/${d.id}/so`] = so; });
+        updates[`devs/${data.id}/tid`] = newTid;
+        updates[`devs/${data.id}/so`] = newSo;
+        updates[`devs/${data.id}/updatedAt`] = today();
+        fbMulti(updates);
       } else {
         // Reorder binnen zelfde categorie
         const targetDev = targetEl.closest('[data-drag-type="dev"]');
