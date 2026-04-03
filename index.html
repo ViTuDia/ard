@@ -115,7 +115,7 @@
     /* Drop zone */
     .drop-zone-active { padding: 10px; border: 2px dashed var(--geel); border-radius: 6px; text-align: center; color: var(--geel); font-size: 12px; font-weight: 500; margin-bottom: 10px; }
     #drag-indicator { position: fixed; height: 3px; background: var(--geel); border-radius: 0 2px 2px 0; pointer-events: none; z-index: 100; display: none; }
-    #drag-indicator::before { content: ''; position: absolute; left: -3px; top: 50%; transform: translateY(-50%); width: 9px; height: 9px; background: var(--geel); border-radius: 50%; }
+    #drag-indicator::before { content: ''; position: absolute; left: -3px; top: 50%; transform: translateY(-50%); width: 9px; height: 9px; background: var(--bg); border: 2px solid var(--geel); border-radius: 50%; box-sizing: border-box; }
 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: var(--modalOverlay); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
