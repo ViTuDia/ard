@@ -47,8 +47,9 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - 10+ UX features: toast, zoekbalk, escape, dubbelklik, swipe tabs, haptic, lege-kolom berichten, dirty-modal warning, tab-tellers
 - Print: landscape, geen marges
 
-## Gepland (nog niet geïmplementeerd)
-- Verwachte omzet tracking: per match omzet + honorarium, instelbare conversie-% per stage, gewogen pipeline-waarde in header + per kolom. Plan staat klaar.
+- Verwachte omzet tracking: per match omzet + honorarium, instelbare conversie-% per stage, gewogen pipeline-waarde in header + per kolom
+- Honorariumcalculator: inklapbare calculator in match-edit modal (BVO × bouwkosten/m² × honorarium%), auto-fill omzet + honorarium, bureau-defaults in admin (€2.000/m², 4%)
+- Match-kaart 💰 icoontje: helder als honorarium bekend, dimmed als niet ingevuld
 
 ## Bekende aandachtspunten
 - Print preview kan nog beter (was eerder leeg, nu gefixed maar niet grondig getest)
