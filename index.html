@@ -2376,10 +2376,28 @@ function setupEventListeners() {
       const tid = dropTarget.dataset.dragId + ':' + pos;
       if (tid !== lastIndicatorId) {
         lastIndicatorId = tid;
-        const y = pos === 'before' ? rect.top - 1 : rect.bottom - 1;
+        // Positioneer exact in het midden van de gap tussen twee items
+        let y;
+        if (pos === 'before') {
+          const prev = refEl.previousElementSibling;
+          if (prev && !prev.hasAttribute('data-empty')) {
+            const prevRect = prev.getBoundingClientRect();
+            y = (prevRect.bottom + rect.top) / 2;
+          } else {
+            y = rect.top;
+          }
+        } else {
+          const next = refEl.nextElementSibling;
+          if (next && !next.hasAttribute('data-empty')) {
+            const nextRect = next.getBoundingClientRect();
+            y = (rect.bottom + nextRect.top) / 2;
+          } else {
+            y = rect.bottom;
+          }
+        }
         dragInd.style.left = rect.left + 'px';
         dragInd.style.width = rect.width + 'px';
-        dragInd.style.top = y + 'px';
+        dragInd.style.top = (y - 1.5) + 'px';
         dragInd.style.display = 'block';
       }
     } else if (lastIndicatorId) {
