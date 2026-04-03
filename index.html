@@ -1348,7 +1348,7 @@ function renderPickDevsModal(c) {
   const dts = sortedArr(STATE.data.devTypes);
   const sel = STATE.ui.modalData?.selectedDevs || [];
   let html = `<p style="font-size:12px;color:${c.grijs};margin-bottom:10px;font-weight:300">Koppel minimaal 1 ontwikkelaar.</p>`;
-  html += `<div style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
+  html += `<div id="modal-scroll-list" style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
   devs.forEach(d => {
     const ch = sel.includes(d.id);
     const dt = dts.find(t => t.id === d.tid);
@@ -1382,7 +1382,7 @@ function renderCoalitionModal(c) {
       (coal||[]).forEach(id => busyIds.add(id));
     });
   }
-  let html = `<div style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
+  let html = `<div id="modal-scroll-list" style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
   devs.forEach(d => {
     const ch = sel.includes(d.id);
     const busy = busyIds.has(d.id);
@@ -1957,11 +1957,11 @@ function setupEventListeners() {
         const sel = STATE.ui.modalData.selectedDevs;
         const idx = sel.indexOf(id);
         if (idx >= 0) sel.splice(idx,1); else sel.push(id);
-        const scrollEl = document.querySelector('.modal-body [style*="overflow-y:auto"]');
-        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+        const sl = document.getElementById('modal-scroll-list');
+        const st = sl ? sl.scrollTop : 0;
         renderModal();
-        const scrollEl2 = document.querySelector('.modal-body [style*="overflow-y:auto"]');
-        if (scrollEl2) scrollEl2.scrollTop = scrollTop;
+        const sl2 = document.getElementById('modal-scroll-list');
+        if (sl2) sl2.scrollTop = st;
         break;
       }
       case 'confirmMatch': {
@@ -2045,11 +2045,11 @@ function setupEventListeners() {
         const sel = STATE.ui.modalData.selectedDevs;
         const idx = sel.indexOf(id);
         if (idx >= 0) sel.splice(idx,1); else sel.push(id);
-        const scrollEl = document.querySelector('.modal-body [style*="overflow-y:auto"]');
-        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+        const sl = document.getElementById('modal-scroll-list');
+        const st = sl ? sl.scrollTop : 0;
         renderModal();
-        const scrollEl2 = document.querySelector('.modal-body [style*="overflow-y:auto"]');
-        if (scrollEl2) scrollEl2.scrollTop = scrollTop;
+        const sl2 = document.getElementById('modal-scroll-list');
+        if (sl2) sl2.scrollTop = st;
         break;
       }
       case 'saveCoalition': {
