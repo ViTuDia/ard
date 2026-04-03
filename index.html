@@ -59,7 +59,7 @@
     .sel-bar-slash { color: var(--geel); font-weight: 500; }
 
     .left-panels { width: 600px; flex-shrink: 0; display: flex; }
-    .panel { width: 50%; background: var(--panelBg); overflow-y: auto; padding: 14px 10px; }
+    .panel { width: 50%; background: var(--panelBg); overflow-y: auto; padding: 14px 10px; min-height: 0; }
     .panel:first-child { border-right: 1px solid var(--zachtgrijs); }
     .panel-title { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; font-weight: 500; }
     .panel-sub { font-size: 10px; color: var(--txtSecondary); margin-bottom: 12px; font-weight: 300; }
@@ -72,7 +72,7 @@
     .pipe-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; border-right: 1px solid var(--zachtgrijs); }
     .pipe-col:last-child { border-right: none; }
     .pipe-col-header { padding: 14px 14px 10px; background: var(--panelBg); min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
-    .pipe-col-body { flex: 1; overflow-y: auto; padding: 8px 8px 16px; }
+    .pipe-col-body { flex: 1; overflow-y: auto; padding: 8px 8px 16px; min-height: 0; }
 
     /* Kaarten */
     .kans-card { padding: 8px 10px; margin-bottom: 4px; border-radius: 3px; border: 1px solid var(--kaartBorder); background: var(--kaart); cursor: grab; transition: opacity 0.12s; }
@@ -699,29 +699,7 @@ KB.handleLogin = async function() {
 function applyTheme() {
   const c = C();
   const r = document.documentElement.style;
-  Object.keys(c).forEach(k => {
-    // Vertaal camelCase keys naar CSS custom property namen
-    const prop = '--' + k.replace(/([A-Z])/g, m => m.toLowerCase());
-    r.setProperty(prop, c[k]);
-  });
-  // Specifieke overrides voor samengestelde namen
-  r.setProperty('--bg', c.bg); r.setProperty('--header', c.header);
-  r.setProperty('--headerTxt', c.headerTxt); r.setProperty('--headerSub', c.headerSub);
-  r.setProperty('--headerDiv', c.headerDiv); r.setProperty('--panelBg', c.panelBg);
-  r.setProperty('--kaart', c.kaart); r.setProperty('--kaartBorder', c.kaartBorder);
-  r.setProperty('--selBg', c.selBg); r.setProperty('--footerBg', c.footerBg);
-  r.setProperty('--txtPrimary', c.txtPrimary); r.setProperty('--txtSecondary', c.txtSecondary);
-  r.setProperty('--zachtgrijs', c.zachtgrijs); r.setProperty('--lichtgrijs', c.lichtgrijs);
-  r.setProperty('--geel', c.geel); r.setProperty('--grijs', c.grijs);
-  r.setProperty('--blauw', c.blauw); r.setProperty('--rood', c.rood);
-  r.setProperty('--groen', c.groen); r.setProperty('--oranje', c.oranje);
-  r.setProperty('--modalBg', c.modalBg); r.setProperty('--modalOverlay', c.modalOverlay);
-  r.setProperty('--inputBorder', c.inputBorder);
-  r.setProperty('--badgeBg', c.badgeBg); r.setProperty('--badgeTxt', c.badgeTxt);
-  r.setProperty('--devSelBg', c.devSelBg); r.setProperty('--devSelTxt', c.devSelTxt);
-  r.setProperty('--devSelBorder', c.devSelBorder);
-  r.setProperty('--devHlBg', c.devHlBg); r.setProperty('--devHlBorder', c.devHlBorder);
-  r.setProperty('--catGroupBg', c.catGroupBg); r.setProperty('--catHeaderBg', c.catHeaderBg);
+  Object.keys(c).forEach(k => r.setProperty('--' + k, c[k]));
   document.body.style.background = c.bg;
   document.body.style.color = c.txtPrimary;
 }
@@ -753,8 +731,6 @@ function render() {
 
   // Bewaar zoekbalk focus
   const ae = document.activeElement;
-  const searchFocusId = ae && ae.classList.contains('panel-search') ? ae.oninput?.toString() : null;
-
   document.getElementById('board-container').innerHTML = html;
 
   // Herstel paneel-breedte na render
@@ -940,7 +916,7 @@ function renderDevsPanel(c, devs, dts, matches) {
   // Geen categorie
   const uncatDevs = devs.filter(d => !dts.find(t => t.id === d.tid));
   if (uncatDevs.length > 0) {
-    html += '<div class="cat-group"><div class="cat-header" style="cursor:default"><span class="cat-label" style="font-style:italic;font-weight:400;color:'+c.grijs+'">Geen categorie</span></div><div class="cat-items">';
+    html += '<div class="cat-group" data-devtype-group=""><div class="cat-header" style="cursor:default"><span class="cat-label" style="font-style:italic;font-weight:400;color:'+c.grijs+'">Geen categorie</span></div><div class="cat-items">';
     uncatDevs.forEach(dev => {
       const isSel = selectedDev === dev.id;
       const cnt = objToArr(STATE.data.matches).filter(m => matchDevIds(m).has(dev.id)).length;
@@ -1026,7 +1002,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   // Geen categorie
   const uncatK = unmatched.filter(k => !kcs.find(cat => cat.id === k.cid));
   if (uncatK.length > 0) {
-    html += `<div class="cat-group"><div class="cat-header" style="cursor:default"><span class="cat-label" style="font-style:italic;font-weight:400;color:${c.grijs}">Geen categorie</span></div><div class="cat-items">`;
+    html += `<div class="cat-group" data-kanscat-group=""><div class="cat-header" style="cursor:default"><span class="cat-label" style="font-style:italic;font-weight:400;color:${c.grijs}">Geen categorie</span></div><div class="cat-items">`;
     uncatK.forEach(kans => {
       const isKC = STATE.ui.collapsedKansen[kans.id];
       const mp = mapsUrl(kans.adres);
@@ -2320,7 +2296,12 @@ function setupEventListeners() {
       case 'alertGoToMatch': {
         STATE.ui.modal = null; renderModal();
         const m = STATE.data.matches[id];
-        if (m) { STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[]))}; STATE.ui.modalExtra = null; renderModal(); }
+        if (m) {
+          const kans = STATE.data.kansen[m.kid];
+          STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
+            bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, _calcOpen: false
+          }; STATE.ui.modalExtra = null; renderModal();
+        }
         break;
       }
 
@@ -2335,8 +2316,11 @@ function setupEventListeners() {
           const mid = ex.matchId;
           const m = STATE.data.matches[mid];
           if (m) {
+            const kans = STATE.data.kansen[m.kid];
             STATE.ui.modal = 'editMatch';
-            STATE.ui.modalData = {...m, id:mid, stage:newStage, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[]))};
+            STATE.ui.modalData = {...m, id:mid, stage:newStage, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
+              bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, _calcOpen: false
+            };
             STATE.ui.modalExtra = null;
             renderModal();
           }
