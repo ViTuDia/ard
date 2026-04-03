@@ -2791,14 +2791,17 @@ function setupEventListeners() {
 
 // ─── INIT ────────────────────────────────────────
 (function init() {
-  try { initFirebase(); } catch(e) { console.error('Firebase init:', e); }
+  try { initFirebase(); } catch(e) {
+    console.error('Firebase init:', e);
+    document.getElementById('login-loading').innerHTML = '<div style="color:red;font-size:11px;max-width:300px;word-break:break-all">Firebase init: '+e.message+'</div>';
+  }
 
   if (localStorage.getItem('kb_session') === '1' && db) {
     // Sessie aanwezig → direct naar app
     try { enterApp(); } catch(e) {
       console.error('EnterApp:', e);
+      document.getElementById('login-loading').innerHTML = '<div style="color:red;font-size:11px;max-width:300px;word-break:break-all">EnterApp: '+e.message+'<br><br>'+e.stack+'</div>';
       localStorage.removeItem('kb_session');
-      KB.checkInitialState();
     }
   } else {
     // Geen sessie → check Firebase voor hash
