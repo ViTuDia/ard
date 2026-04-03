@@ -1307,7 +1307,7 @@ function renderEditMatchModal(c) {
     </select></div>
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-top:14px">
       <div class="field"><label>Ontwikkelaars</label>
-        <div style="max-height:180px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px">
+        <div id="modal-scroll-list" style="max-height:180px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px">
           ${devs.map(dev => {
             const linked = (md.links||[]).includes(dev.id);
             const inC = ci.has(dev.id);
@@ -2013,7 +2013,12 @@ function setupEventListeners() {
         const md = STATE.ui.modalData; if (!md) break;
         const idx = (md.links||[]).indexOf(did);
         if (idx >= 0) md.links.splice(idx,1); else md.links.push(did);
-        renderModal(); break;
+        const sl = document.getElementById('modal-scroll-list');
+        const st = sl ? sl.scrollTop : 0;
+        renderModal();
+        const sl2 = document.getElementById('modal-scroll-list');
+        if (sl2) sl2.scrollTop = st;
+        break;
       }
       case 'unlinkDev': {
         const mid = el.dataset.mid;
