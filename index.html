@@ -113,7 +113,9 @@
 
     /* Drop zone */
     .drop-zone-active { padding: 10px; border: 2px dashed var(--geel); border-radius: 6px; text-align: center; color: var(--geel); font-size: 12px; font-weight: 500; margin-bottom: 10px; }
-    .drag-indicator { height: 3px; background: var(--geel); border-radius: 2px; margin: 2px 0; transition: opacity 0.1s; pointer-events: none; }
+    [data-drag-pos] { position: relative; }
+    [data-drag-pos="before"]::before { content: ''; position: absolute; top: -2px; left: 0; right: 0; height: 3px; background: var(--geel); border-radius: 2px; z-index: 10; pointer-events: none; }
+    [data-drag-pos="after"]::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--geel); border-radius: 2px; z-index: 10; pointer-events: none; }
 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: var(--modalOverlay); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -2199,7 +2201,7 @@ function setupEventListeners() {
   let lastIndicatorId = null;
 
   function clearDragIndicators() {
-    document.querySelectorAll('.drag-indicator').forEach(el => el.remove());
+    document.querySelectorAll('[data-drag-pos]').forEach(el => el.removeAttribute('data-drag-pos'));
     lastIndicatorId = null;
   }
 
@@ -2380,20 +2382,7 @@ function setupEventListeners() {
       if (tid !== lastIndicatorId) {
         clearDragIndicators();
         lastIndicatorId = tid;
-        const indicator = document.createElement('div');
-        indicator.className = 'drag-indicator';
-        if (indicatorParent.classList.contains('cat-items')) {
-          // Dev/kans naar categorie: indicator binnen cat-items container
-          if (pos === 'before') {
-            indicatorParent.insertBefore(indicator, indicatorParent.firstChild);
-          } else {
-            indicatorParent.appendChild(indicator);
-          }
-        } else if (pos === 'before') {
-          indicatorParent.parentNode.insertBefore(indicator, indicatorParent);
-        } else {
-          indicatorParent.parentNode.insertBefore(indicator, indicatorParent.nextSibling);
-        }
+        indicatorParent.setAttribute('data-drag-pos', pos);
       }
     } else if (lastIndicatorId) {
       clearDragIndicators();
@@ -2596,7 +2585,7 @@ function setupEventListeners() {
     e.dataTransfer.effectAllowed = 'move';
     if (dragType === 'match') STATE.ui.dragging = dragSrcId;
     if (dragType === 'kans') STATE.ui.draggingKans = dragSrcId;
-    setTimeout(() => { el.style.opacity = '0.4'; }, 0);
+    setTimeout(() => { el.style.opacity = '0.15'; }, 0);
   });
 
   document.body.addEventListener('dragend', e => {
@@ -2665,7 +2654,7 @@ function setupEventListeners() {
       dragSrcId = touchData.id;
       if (dragType === 'match') STATE.ui.dragging = dragSrcId;
       if (dragType === 'kans') STATE.ui.draggingKans = dragSrcId;
-      touchDragEl.style.opacity = '0.3';
+      touchDragEl.style.opacity = '0.15';
     }, 200);
   }, {passive: true});
 
