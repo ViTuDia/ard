@@ -1457,6 +1457,7 @@ function renderConfirmDeleteModal(c) {
     case 'match': msg = ex.fromDrag
         ? `"${esc(ex.name)}" ontkoppelen? Alle ontwikkelaars en coalities worden losgekoppeld. De kans komt terug in het kansenpaneel.`
         : 'Match verwijderen?'; break;
+    case 'unlinkDev': msg = `"${esc(ex.name)}" ontkoppelen van deze match?`; break;
     case 'coalition': msg = 'Coalitie verwijderen?'; break;
     case 'devType': msg = 'Type verwijderen? Ontwikkelaars \u2192 "geen categorie".'; break;
     case 'kansCat': msg = 'Gebied verwijderen? Kansen \u2192 "geen categorie".'; break;
@@ -2006,13 +2007,10 @@ function setupEventListeners() {
       case 'unlinkDev': {
         const mid = el.dataset.mid;
         const did = el.dataset.did;
-        const m = STATE.data.matches[mid]; if (!m) break;
         const dev = STATE.data.devs[did];
-        const devName = dev?.name || 'Naamloos';
-        if (!confirm(`"${devName}" ontkoppelen van deze match?`)) break;
-        const links = (m.links||[]).filter(l => l !== did);
-        fbUpdate(`matches/${mid}`, {links, updatedAt:today()});
-        break;
+        STATE.ui.modal = 'confirmDelete';
+        STATE.ui.modalExtra = {type:'unlinkDev', mid, did, name: dev?.name||'Naamloos'};
+        renderModal(); break;
       }
 
       // Coalities
@@ -2122,6 +2120,12 @@ function setupEventListeners() {
             break;
           }
           case 'match': fbRemove(`matches/${ex.id}`); break;
+          case 'unlinkDev': {
+            const m = STATE.data.matches[ex.mid]; if (!m) break;
+            const links = (m.links||[]).filter(l => l !== ex.did);
+            fbUpdate(`matches/${ex.mid}`, {links, updatedAt:today()});
+            break;
+          }
           case 'coalition': {
             const m = STATE.data.matches[ex.mid]; if (!m) break;
             const coals = JSON.parse(JSON.stringify(m.coals||[]));
