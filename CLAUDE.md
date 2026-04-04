@@ -4,7 +4,7 @@
 Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontwikkelaars aan kansen (vastgoedprojecten) tot matches die door een kanban-pipeline bewegen.
 
 ## Technische stack
-- Single-file vanilla JS app: `index.html` (~2900+ regels)
+- Single-file vanilla JS app: `index.html` (~3200+ regels)
 - Firebase Realtime Database (project: atelierruimdenkers-d47d6)
 - GitHub Pages hosting: https://vitudia.github.io/koppelbaas/
 - SHA-256 wachtwoord auth, dark mode, CSS custom properties
@@ -18,7 +18,6 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 
 ## Git
 - Repo: vitudia/koppelbaas (private)
-- Feature branch: claude/general-work-iTEUt (wordt gemerged naar main)
 - Wijzigingen altijd naar main pushen voor GitHub Pages deploy
 
 ## Voltooide features
@@ -34,11 +33,13 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Cat-group visuele hiërarchie (achtergrond containers voor categorieën)
 - Pipeline-kolommen met subtiele stage-kleur achtergrond (6% opacity), borders doorlopend tot footer
 - Dark mode met 30+ kleurvariabelen
-- Admin menu: wachtwoord wijzigen, backup/import, uitloggen
+- Admin menu: wachtwoord wijzigen, backup/import, conversiepercentages, honorarium-defaults, uitloggen
 - Login flow: auto-detect setup als geen hash, 4s timeout fallback
 - Mobiel: tab-navigatie, stage-tabs, move-knoppen, geen selectie-highlight
 - Lock-modus per match-kaart: vergrendelde kaarten niet versleepbaar naar andere kolom, slotje rechtsonder
-- Confirm-modals bij ontkoppelen ontwikkelaar en verwijderen coalitie (styled, geen native confirm)
+- Styled confirm-modals overal (geen native confirm/alert)
+- Verwijder-dialogen tonen impact: aantal koppelingen, honorarium dat verloren gaat
+- Undo-toast bij match-verwijdering (6 seconden "Ongedaan maken" knop)
 - Zoekbalken met ✕ clear-knop (CSS :not(:placeholder-shown))
 - Scroll-behoud bij toggle dev in pick/coalition/editMatch modals (id="modal-scroll-list")
 - Header-knoppen: uniforme hoogte (34px), vaste breedte icon-knoppen (36px), 18px iconen
@@ -46,10 +47,23 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Verbindingsindicator rechtsonder in footer
 - 10+ UX features: toast, zoekbalk, escape, dubbelklik, swipe tabs, haptic, lege-kolom berichten, dirty-modal warning, tab-tellers
 - Print: landscape, geen marges
+- Orphaned matches: matches met verwijderde kans tonen als rood kaartje met delete-knop
 
-- Verwachte omzet tracking: per match omzet + honorarium, instelbare conversie-% per stage, gewogen pipeline-waarde in header + per kolom
-- Honorariumcalculator: inklapbare calculator in match-edit modal (BVO × bouwkosten/m² × honorarium%), auto-fill omzet + honorarium, bureau-defaults in admin (€2.000/m², 4%)
-- Match-kaart 💰 icoontje: helder als honorarium bekend, dimmed als niet ingevuld
+### Financieel
+- Verwachte omzet tracking: per match honorarium, instelbare conversie-% per stage, gewogen pipeline-waarde in header + per kolom
+- Honorariumcalculator: inklapbare calculator in match-edit modal (BVO × bouwkosten/m² × honorarium%), auto-fill honorarium
+- Calculator opent automatisch als honorarium nog niet ingevuld is
+- Bureau-defaults in admin (€2.000/m², 4%) — gelden alleen voor nieuwe matches, bestaande matches worden niet gewijzigd
+- BVO sync: wijzigen van BVO op een kans werkt automatisch door naar alle matches voor die kans
+- Financieel overzicht: tabel-modal (klik op "verwacht" stat) voor snel inline bewerken van alle matches
+- Dev-omzet: bij selectie van een ontwikkelaar toont de selectiebalk het gewogen verwachte honorarium
+- Match-kaart 💰 icoontje met rood streepje alleen als honorarium ontbreekt
+- Header stat "vrij" toont aantal ongematchte kansen (niet totaal)
+
+### Help
+- Help-modal met 11 doorzoekbare hoofdstukken (overzicht, devs, kansen, pipeline, matches, coalities, financieel, alerts, instellingen, mobiel, tips)
+- Bereikbaar via admin-menu → "Handleiding openen"
+- Zoekbalk filtert hoofdstukken op titel en inhoud
 
 ## Bekende aandachtspunten
 - Print preview kan nog beter (was eerder leeg, nu gefixed maar niet grondig getest)
@@ -64,5 +78,6 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 
 ## Bestanden
 - `/home/user/koppelbaas/index.html` — de volledige app
+- `/home/user/koppelbaas/seed.html` — testdata loader
 - `/home/user/koppelbaas/database.rules.json` — Firebase rules
 - `/home/user/koppelbaas/firebase.json` — hosting config

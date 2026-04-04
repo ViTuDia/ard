@@ -132,8 +132,9 @@
     .field textarea { min-height: 50px; resize: vertical; }
 
     /* Toast melding */
-    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 12px; font-weight: 500; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; }
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 12px; font-weight: 500; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex; align-items: center; gap: 12px; }
+    .toast .undo-btn { background: var(--geel); color: #000; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .toast.show { opacity: 1; pointer-events: auto; }
 
     /* Firebase verbindingsindicator */
     .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
@@ -629,12 +630,21 @@ KB.checkInitialState = async function() {
 };
 
 // ─── TOAST ──────────────────────────────────────
-function showToast(msg) {
+let _undoTimer = null;
+function showToast(msg, undoFn) {
   const t = document.getElementById('toast');
   if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+  if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer = null; }
+  if (undoFn) {
+    t.innerHTML = `<span>${esc(msg)}</span><button class="undo-btn" id="undo-btn">Ongedaan maken</button>`;
+    document.getElementById('undo-btn').onclick = () => { undoFn(); t.classList.remove('show'); clearTimeout(_undoTimer); };
+    t.classList.add('show');
+    _undoTimer = setTimeout(() => t.classList.remove('show'), 6000);
+  } else {
+    t.innerHTML = esc(msg);
+    t.classList.add('show');
+    _undoTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
 }
 
 let _confirmCb = null;
@@ -728,7 +738,7 @@ function render() {
   const selName = getSelectionName();
 
   let html = '';
-  html += renderHeader(c, devs, kansen, matches, alarms);
+  html += renderHeader(c, devs, unmatched, matches, alarms);
   html += renderSelectionBar(c, selName, matches, unmatched);
   html += '<div class="main">';
   html += '<div class="left-panels" id="left-panels">';
@@ -839,15 +849,13 @@ function renderHeader(c, devs, kansen, matches, alarms) {
     </div>
     <div class="header-right">
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
-      <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">kansen</div></div>
+      <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">vrij</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
       ${(() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return gw > 0 ? `<div class="header-stat" style="cursor:pointer" data-action="showFinOverview" title="Financieel overzicht"><div class="header-stat-val">${fmtEuro(Math.round(gw))}</div><div class="header-stat-lbl">verwacht</div></div>` : ''; })()}
-      <button data-noprint title="Financieel overzicht" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon">\uD83D\uDCB0</span></button>
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
       <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleDark"><span class="header-icon">${STATE.ui.dark?'\u2600':'\u263E'}</span></button>
       <button data-noprint title="Print het board" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="print"><span class="header-icon">\uD83D\uDDA8</span></button>
-      <button data-noprint title="Help" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showHelp"><span class="header-icon">?</span></button>
-      <button data-noprint title="Admin instellingen" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showAdmin"><span class="header-icon">\u2699</span></button>
+      <button data-noprint title="Admin & help" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showAdmin"><span class="header-icon">\u2699</span></button>
     </div>
   </div>`;
 }
@@ -1661,6 +1669,15 @@ KB.finEdit = function(matchId, field, value) {
   if (md.finEdits[matchId].honorarium !== undefined) upd.honorarium = md.finEdits[matchId].honorarium;
   upd.updatedAt = today();
   fbUpdate(`matches/${matchId}`, upd);
+  // Live visuele feedback: update honorarium + gewogen kolommen
+  if (['bvo','bkm2','honPct'].includes(field)) {
+    const ae = document.activeElement;
+    renderModal();
+    if (ae?.dataset) {
+      const inputs = document.querySelectorAll('.modal-body input[type="number"]');
+      for (const inp of inputs) { if (inp.value === ae.value && inp.offsetParent) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e) {} break; } }
+    }
+  }
 };
 
 function renderHelpModal(c) {
@@ -1812,11 +1829,15 @@ function renderAdminModal(c) {
       </div>
       ${bkMsg ? `<div style="font-size:11px;margin-top:8px;color:${bkOk?c.groen:c.rood}">${esc(bkMsg)}</div>` : ''}
     </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
         <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
       </div>
+    </div>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Help</div>
+      <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" data-action="showHelp">? Handleiding openen</button>
     </div>`;
 }
 
@@ -2374,7 +2395,7 @@ function setupEventListeners() {
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0),
             bkm2: m.bkm2 || 0,
             honPct: m.honPct || 0,
-            _calcOpen: false
+            _calcOpen: !(m.honorarium)
           };
           STATE.ui.modalExtra = null; renderModal();
         }
@@ -2392,10 +2413,13 @@ function setupEventListeners() {
         fbUpdate(`matches/${md.id}`, upd);
         STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
-      case 'deleteMatch':
+      case 'deleteMatch': {
+        const _bak = JSON.parse(JSON.stringify(STATE.data.matches[id]||{}));
         showConfirm('Verweesde match verwijderen?', () => {
-          fbRemove(`matches/${id}`); showToast('Match verwijderd');
+          fbRemove(`matches/${id}`);
+          showToast('Match verwijderd', () => fbSet(`matches/${id}`, _bak));
         }); break;
+      }
       case 'confirmDeleteMatch':
         STATE.ui.modal = 'confirmDelete';
         STATE.ui.modalExtra = {type:'match',id};
@@ -2537,7 +2561,12 @@ function setupEventListeners() {
             objToArr(STATE.data.matches).filter(m => m.kid === ex.id).forEach(m => fbRemove(`matches/${m.id}`));
             break;
           }
-          case 'match': fbRemove(`matches/${ex.id}`); break;
+          case 'match': {
+            const _bak = JSON.parse(JSON.stringify(STATE.data.matches[ex.id]||{}));
+            fbRemove(`matches/${ex.id}`);
+            showToast('Match verwijderd', () => fbSet(`matches/${ex.id}`, _bak));
+            break;
+          }
           case 'unlinkDev': {
             const m = STATE.data.matches[ex.mid]; if (!m) break;
             const links = (m.links||[]).filter(l => l !== ex.did);
@@ -2572,7 +2601,7 @@ function setupEventListeners() {
         if (m) {
           const kans = STATE.data.kansen[m.kid];
           STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
-            bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, _calcOpen: false
+            bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, _calcOpen: !(m.honorarium)
           }; STATE.ui.modalExtra = null; renderModal();
         }
         break;
