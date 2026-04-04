@@ -185,6 +185,8 @@
 
     /* ─── MOBIEL (< 768px) ─── */
     @media (max-width: 767px) {
+      html, body { overflow: hidden; position: fixed; width: 100%; }
+
       /* Header compact */
       .header { padding: 10px 12px; gap: 6px; }
       .header-left { gap: 10px; }
@@ -200,7 +202,7 @@
       .sel-bar { padding: 6px 12px; }
 
       /* App: ruimte voor vaste tab-balk onderaan */
-      #app { height: calc(100vh - 52px); }
+      #app { height: calc(100vh - 52px); height: calc(100dvh - 52px); }
 
       /* Main: stacked, overflow hidden zodat flex scroll-keten werkt */
       .main { flex-direction: column; overflow: hidden; }
