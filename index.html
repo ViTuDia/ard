@@ -1500,11 +1500,27 @@ function renderConfirmDeleteModal(c) {
   const ex = STATE.ui.modalExtra || {};
   let msg = '';
   switch(ex.type) {
-    case 'dev': msg = `"${esc(ex.name)}" verwijderen?`; break;
-    case 'kans': msg = `"${esc(ex.name)}" verwijderen? Matches worden ook verwijderd.`; break;
-    case 'match': msg = ex.fromDrag
+    case 'dev': {
+      const _dm = objToArr(STATE.data.matches).filter(m => matchDevIds(m).has(ex.id));
+      msg = `"${esc(ex.name)}" verwijderen?${_dm.length ? ` Wordt ontkoppeld uit ${_dm.length} match(es).` : ''}`;
+      break;
+    }
+    case 'kans': {
+      const _km = objToArr(STATE.data.matches).filter(m => m.kid === ex.id);
+      const _kh = _km.reduce((s,m) => s + (m.honorarium||0), 0);
+      msg = `"${esc(ex.name)}" verwijderen?${_km.length ? ` ${_km.length} match(es) worden ook verwijderd.` : ''}${_kh ? ` Totaal ${fmtEuro(_kh)} honorarium gaat verloren.` : ''}`;
+      break;
+    }
+    case 'match': {
+      const _m = STATE.data.matches[ex.id];
+      const _k = _m ? STATE.data.kansen[_m.kid] : null;
+      const _tl = _m ? totalLinks(_m) : 0;
+      const _honInfo = _m?.honorarium ? ` Honorarium ${fmtEuro(_m.honorarium)} gaat verloren.` : '';
+      msg = ex.fromDrag
         ? `"${esc(ex.name)}" ontkoppelen? Alle ontwikkelaars en coalities worden losgekoppeld. De kans komt terug in het kansenpaneel.`
-        : 'Match verwijderen?'; break;
+        : `Match "${esc(_k?.name||'?')}" verwijderen?${_tl ? ` ${_tl} koppeling(en) worden verwijderd.` : ''}${_honInfo} De kans komt terug in het kansenpaneel.`;
+      break;
+    }
     case 'unlinkDev': msg = `"${esc(ex.name)}" ontkoppelen van deze match?`; break;
     case 'coalition': msg = 'Coalitie verwijderen?'; break;
     case 'devType': msg = 'Type verwijderen? Ontwikkelaars \u2192 "geen categorie".'; break;
@@ -2333,7 +2349,8 @@ function setupEventListeners() {
         STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'deleteMatch':
-        fbRemove(`matches/${id}`); showToast('Match verwijderd'); break;
+        if (confirm('Verweesde match verwijderen?')) { fbRemove(`matches/${id}`); showToast('Match verwijderd'); }
+        break;
       case 'confirmDeleteMatch':
         STATE.ui.modal = 'confirmDelete';
         STATE.ui.modalExtra = {type:'match',id};
