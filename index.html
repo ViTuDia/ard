@@ -637,6 +637,18 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+let _confirmCb = null;
+let _confirmPrev = null;
+function showConfirm(msg, onYes) {
+  _confirmPrev = {modal:STATE.ui.modal, modalData:STATE.ui.modalData, modalExtra:STATE.ui.modalExtra, dirty:STATE.ui.modalDirty};
+  _confirmCb = onYes;
+  STATE.ui.modal = 'sysConfirm';
+  STATE.ui.modalData = {confirmMsg: msg};
+  STATE.ui.modalExtra = null;
+  STATE.ui.modalDirty = false;
+  renderModal();
+}
+
 // ─── FIREBASE VERBINDING ────────────────────────
 function setupConnectionMonitor() {
   if (!db) return;
@@ -1265,6 +1277,16 @@ function renderModal() {
     case 'admin': { w=440; title='\u2699 Admin'; body = renderAdminModal(c); break; }
     case 'help': { w=540; title='? Help'; body = renderHelpModal(c); break; }
     case 'finOverview': { w=700; title='\uD83D\uDCB0 Financieel overzicht'; body = renderFinOverviewModal(c); break; }
+    case 'sysConfirm': {
+      w=380; title='Bevestigen';
+      const cmsg = STATE.ui.modalData?.confirmMsg || '';
+      body = `<p style="font-size:13px;font-weight:300;line-height:1.5;margin-bottom:14px">${esc(cmsg)}</p>
+        <div style="display:flex;justify-content:flex-end;gap:6px">
+          <button class="btn btn-grey" data-action="sysConfirmNo">Annuleer</button>
+          <button class="btn btn-black" data-action="sysConfirmYes">Doorgaan</button>
+        </div>`;
+      break;
+    }
   }
 
   html += `<div class="modal" style="max-width:${w}px" data-action="modalBody">`;
@@ -1843,19 +1865,24 @@ KB.importBackup = async function(file) {
       if (md) { md.bkMsg = 'Ongeldig backup-bestand: ontbrekende data (' + missing.join(', ') + ')'; md.bkOk = false; renderModal(); }
       return;
     }
-    if (!confirm('Dit overschrijft ALLE huidige data. Doorgaan?')) return;
-    // Schrijf naar Firebase
-    const updates = {};
-    if (data.meta) updates['/meta'] = data.meta;
-    updates['/devTypes'] = data.devTypes || {};
-    updates['/kansCats'] = data.kansCats || {};
-    updates['/devs'] = data.devs || {};
-    updates['/kansen'] = data.kansen || {};
-    updates['/matches'] = data.matches || {};
-    if (data.users) updates['/users'] = data.users;
-    await db.ref().update(updates);
-    if (md) { md.bkMsg = 'Backup hersteld!'; md.bkOk = true; renderModal(); }
-    showToast('Backup hersteld');
+    showConfirm('Dit overschrijft ALLE huidige data. Doorgaan?', async () => {
+      try {
+        const updates = {};
+        if (data.meta) updates['/meta'] = data.meta;
+        updates['/devTypes'] = data.devTypes || {};
+        updates['/kansCats'] = data.kansCats || {};
+        updates['/devs'] = data.devs || {};
+        updates['/kansen'] = data.kansen || {};
+        updates['/matches'] = data.matches || {};
+        if (data.users) updates['/users'] = data.users;
+        await db.ref().update(updates);
+        STATE.ui.modal = 'admin'; STATE.ui.modalData = {bkMsg:'Backup hersteld!',bkOk:true}; renderModal();
+        showToast('Backup hersteld');
+      } catch(err) {
+        STATE.ui.modal = 'admin'; STATE.ui.modalData = {bkMsg:'Fout bij import: '+err.message,bkOk:false}; renderModal();
+      }
+    });
+    return;
   } catch(e) {
     if (md) { md.bkMsg = 'Fout bij import: ' + e.message; md.bkOk = false; renderModal(); }
   }
@@ -1879,12 +1906,14 @@ KB.mfCalc = function(field, value) {
   if (['bvo','bkm2','honPct'].includes(field)) {
     const newHon = calcHon(md).honorarium;
     if (md.honorarium && md.honorarium !== newHon && !md._calcConfirmed) {
-      if (!confirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`)) {
-        md[field] = md['_prev_'+field] ?? value;
-        renderModal();
-        return;
-      }
-      md._calcConfirmed = true;
+      const prevVal = md['_prev_'+field] ?? value;
+      showConfirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`, () => {
+        md._calcConfirmed = true;
+        md.honorarium = newHon;
+        STATE.ui.modal = 'editMatch'; renderModal();
+      });
+      md[field] = prevVal;
+      return;
     }
     md.honorarium = newHon;
   }
@@ -2005,8 +2034,23 @@ function setupEventListeners() {
   // ─── Escape sluit modals ───
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && STATE.ui.modal) {
+      if (STATE.ui.modal === 'sysConfirm') {
+        _confirmCb = null;
+        if (_confirmPrev) {
+          STATE.ui.modal = _confirmPrev.modal; STATE.ui.modalData = _confirmPrev.modalData;
+          STATE.ui.modalExtra = _confirmPrev.modalExtra; STATE.ui.modalDirty = _confirmPrev.dirty;
+          _confirmPrev = null; renderModal();
+        } else {
+          STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+          renderModal();
+        }
+        return;
+      }
       if (STATE.ui.modalDirty) {
-        if (!confirm('Wijzigingen niet opgeslagen. Sluiten?')) return;
+        showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+          STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+          STATE.ui.modalDirty = false; renderModal();
+        }); return;
       }
       STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
       STATE.ui.modalDirty = false;
@@ -2349,8 +2393,9 @@ function setupEventListeners() {
         STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
       }
       case 'deleteMatch':
-        if (confirm('Verweesde match verwijderen?')) { fbRemove(`matches/${id}`); showToast('Match verwijderd'); }
-        break;
+        showConfirm('Verweesde match verwijderen?', () => {
+          fbRemove(`matches/${id}`); showToast('Match verwijderd');
+        }); break;
       case 'confirmDeleteMatch':
         STATE.ui.modal = 'confirmDelete';
         STATE.ui.modalExtra = {type:'match',id};
@@ -2574,10 +2619,29 @@ function setupEventListeners() {
       // Modal sluiten
       case 'modalBody': break; // absorbeert clicks op lege modal-ruimte
       case 'closeModal':
-        if (STATE.ui.modalDirty && !confirm('Wijzigingen niet opgeslagen. Sluiten?')) break;
+        if (STATE.ui.modalDirty) {
+          showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+            STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+            STATE.ui.modalDirty = false; renderModal();
+          }); break;
+        }
         STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         STATE.ui.modalDirty = false;
         renderModal(); break;
+      case 'sysConfirmYes':
+        if (_confirmCb) { const cb = _confirmCb; _confirmCb = null; _confirmPrev = null; cb(); }
+        break;
+      case 'sysConfirmNo':
+        _confirmCb = null;
+        if (_confirmPrev) {
+          STATE.ui.modal = _confirmPrev.modal; STATE.ui.modalData = _confirmPrev.modalData;
+          STATE.ui.modalExtra = _confirmPrev.modalExtra; STATE.ui.modalDirty = _confirmPrev.dirty;
+          _confirmPrev = null; renderModal();
+        } else {
+          STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+          STATE.ui.modalDirty = false; renderModal();
+        }
+        break;
 
     }
   });
