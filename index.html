@@ -2276,7 +2276,7 @@ function setupEventListeners() {
         } else {
           const cnt = objToArr(STATE.data.matches).filter(m => m.stage === stg).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[kansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,omzet:Math.round(_bvo*_hd.bkm2),honorarium:Math.round(_bvo*_hd.bkm2*_hd.honPct/100)});
+          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,omzet:0,honorarium:0});
           STATE.ui.modal = null; renderModal();
         }
         break;
@@ -2522,7 +2522,7 @@ function setupEventListeners() {
           // Nieuwe match via + knop met stage gate
           const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[ex.newMatchKansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,omzet:Math.round(_bvo*_hd.bkm2),honorarium:Math.round(_bvo*_hd.bkm2*_hd.honPct/100)});
+          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,omzet:0,honorarium:0});
           STATE.ui.modal = null; renderModal();
         }
         break;
