@@ -145,6 +145,9 @@
     .map-legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 2px rgba(0,0,0,0.3); display:inline-block; vertical-align:middle; margin-right:3px; }
     .map-status { font-size:11px; color:var(--grijs); margin-top:8px; font-weight:300; }
 
+    .header-fin-label { display: none; }
+    .header-fin-full { display: inline; }
+
     /* Firebase verbindingsindicator */
     .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
 
@@ -204,6 +207,9 @@
       .header-title-name { font-size: 16px; }
       .header-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
       .header-stat { display: none; }
+      .header-fin-label { display: inline; }
+      .header-fin-full { display: none; }
+      [data-action="print"] { display: none; }
       .header-right .btn-sm { padding: 6px 10px; font-size: 12px; min-height: 34px; }
 
       /* Selectiebalk compact */
@@ -684,11 +690,11 @@ function showToast(msg, undoFn) {
 
 let _confirmCb = null;
 let _confirmPrev = null;
-function showConfirm(msg, onYes) {
+function showConfirm(msg, onYes, labels) {
   _confirmPrev = {modal:STATE.ui.modal, modalData:STATE.ui.modalData, modalExtra:STATE.ui.modalExtra, dirty:STATE.ui.modalDirty};
   _confirmCb = onYes;
   STATE.ui.modal = 'sysConfirm';
-  STATE.ui.modalData = {confirmMsg: msg};
+  STATE.ui.modalData = {confirmMsg: msg, confirmYes: labels?.yes, confirmNo: labels?.no};
   STATE.ui.modalExtra = null;
   STATE.ui.modalDirty = false;
   renderModal();
@@ -886,7 +892,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">vrij</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      ${(() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })()}
+      ${(() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : '\uD83D\uDCB0'}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })()}
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
       <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleDark"><span class="header-icon">${STATE.ui.dark?'\u2600':'\u263E'}</span></button>
       <button data-noprint title="Print het board" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="print"><span class="header-icon">\uD83D\uDDA8</span></button>
@@ -1325,10 +1331,12 @@ function renderModal() {
     case 'sysConfirm': {
       w=380; title='Bevestigen';
       const cmsg = STATE.ui.modalData?.confirmMsg || '';
+      const cyes = STATE.ui.modalData?.confirmYes || 'Ja';
+      const cno = STATE.ui.modalData?.confirmNo || 'Annuleer';
       body = `<p style="font-size:13px;font-weight:300;line-height:1.5;margin-bottom:14px">${esc(cmsg)}</p>
         <div style="display:flex;justify-content:flex-end;gap:6px">
-          <button class="btn btn-grey" data-action="sysConfirmNo">Annuleer</button>
-          <button class="btn btn-black" data-action="sysConfirmYes">Doorgaan</button>
+          <button class="btn btn-grey" data-action="sysConfirmNo">${esc(cno)}</button>
+          <button class="btn btn-black" data-action="sysConfirmYes">${esc(cyes)}</button>
         </div>`;
       break;
     }
@@ -2108,7 +2116,7 @@ KB.importBackup = async function(file) {
       if (md) { md.bkMsg = 'Ongeldig backup-bestand: ontbrekende data (' + missing.join(', ') + ')'; md.bkOk = false; renderModal(); }
       return;
     }
-    showConfirm('Dit overschrijft ALLE huidige data. Doorgaan?', async () => {
+    showConfirm('Dit overschrijft ALLE huidige data.', async () => {
       try {
         const updates = {};
         if (data.meta) updates['/meta'] = data.meta;
@@ -2139,7 +2147,7 @@ KB.closeModal = function() {
   if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
   const returnMap = STATE.ui._returnToMap;
   if (STATE.ui.modalDirty) {
-    showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+    showConfirm('Wijzigingen niet opgeslagen. Toch sluiten?', () => {
       STATE.ui.modalDirty = false;
       if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
       else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
@@ -2308,7 +2316,7 @@ function setupEventListeners() {
       }
       if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
       if (STATE.ui.modalDirty) {
-        showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+        showConfirm('Wijzigingen niet opgeslagen. Toch sluiten?', () => {
           STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
           STATE.ui.modalDirty = false; renderModal();
         }); return;
@@ -2916,7 +2924,7 @@ function setupEventListeners() {
         if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
         const returnMap = STATE.ui._returnToMap;
         if (STATE.ui.modalDirty) {
-          showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+          showConfirm('Wijzigingen niet opgeslagen. Toch sluiten?', () => {
             STATE.ui.modalDirty = false;
             if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
             else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
