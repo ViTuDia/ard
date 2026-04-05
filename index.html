@@ -1706,7 +1706,11 @@ function renderFinOverviewModal(c) {
     html += `<tr style="${stageChanged?'border-top:2px solid '+sc+'44':''};border-bottom:1px solid ${c.zachtgrijs}22">
       <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
       <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
-      <td style="padding:5px 4px;text-align:center;font-size:10px;color:${c.grijs}">${typeLabel}</td>
+      <td style="padding:2px 1px"><select style="width:100%;padding:2px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:10px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" onchange="KB.finEditType('${m.id}',this.value)">
+        <option value="bvo" ${ct==='bvo'?'selected':''}>BVO</option>
+        <option value="units" ${ct==='units'?'selected':''}>Units</option>
+        <option value="fixed" ${ct==='fixed'?'selected':''}>Vast</option>
+      </select></td>
       <td style="padding:2px 1px">${field1}</td>
       <td style="padding:2px 1px">${field2}</td>
       <td style="padding:5px 4px;text-align:right;font-weight:500;color:${hon?c.txtPrimary:c.grijs}">${hon ? fmtEuro(hon) : '\u2014'}</td>
@@ -1721,6 +1725,14 @@ function renderFinOverviewModal(c) {
   html += '</tbody></table></div>';
   return html;
 }
+KB.finEditType = function(matchId, value) {
+  const md = STATE.ui.modalData; if (!md) return;
+  if (!md.finEdits) md.finEdits = {};
+  if (!md.finEdits[matchId]) md.finEdits[matchId] = {};
+  md.finEdits[matchId].calcType = value;
+  fbUpdate(`matches/${matchId}`, {calcType:value, updatedAt:today()});
+  renderModal();
+};
 KB.finEdit = function(matchId, field, value) {
   const md = STATE.ui.modalData; if (!md) return;
   if (!md.finEdits) md.finEdits = {};
@@ -2144,23 +2156,23 @@ KB.mfCalc = function(field, value) {
   const md = STATE.ui.modalData; if (!md) return;
   md[field] = value;
   STATE.ui.modalDirty = true;
-  const calcFields = ['bvo','bkm2','honPct','units','pricePerUnit','calcType'];
-  if (calcFields.includes(field)) {
-    if (field === 'calcType' && value === 'fixed') { md._calcConfirmed = false; }
-    else if (field !== 'calcType') {
-      const newHon = calcHon(md).honorarium;
-      if (md.honorarium && md.honorarium !== newHon && !md._calcConfirmed) {
-        const prevVal = md['_prev_'+field] ?? value;
-        showConfirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`, () => {
-          md._calcConfirmed = true;
-          md.honorarium = newHon;
-          STATE.ui.modal = 'editMatch'; renderModal();
-        });
-        md[field] = prevVal;
-        return;
-      }
-      md.honorarium = newHon;
+  const calcFields = ['bvo','bkm2','honPct','units','pricePerUnit'];
+  if (field === 'calcType') {
+    md._calcConfirmed = true; // type wissel = bewuste keuze, geen confirm nodig
+    if (value !== 'fixed') md.honorarium = calcHon(md).honorarium;
+  } else if (calcFields.includes(field)) {
+    const newHon = calcHon(md).honorarium;
+    if (md.honorarium && md.honorarium !== newHon && !md._calcConfirmed) {
+      const prevVal = md['_prev_'+field] ?? value;
+      showConfirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`, () => {
+        md._calcConfirmed = true;
+        md.honorarium = newHon;
+        STATE.ui.modal = 'editMatch'; renderModal();
+      });
+      md[field] = prevVal;
+      return;
     }
+    md.honorarium = newHon;
   }
   md['_prev_'+field] = value;
   const ae = document.activeElement;
