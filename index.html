@@ -2176,10 +2176,10 @@ KB.mfCalc = function(field, value) {
   }
   md['_prev_'+field] = value;
   const ae = document.activeElement;
-  const cf = ae?.dataset?.calcfield;
+  const cf = (ae?.tagName === 'INPUT' && ae?.dataset?.calcfield) ? ae.dataset.calcfield : null;
   renderModal();
   if (cf) {
-    const el = document.querySelector(`[data-calcfield="${cf}"]`);
+    const el = document.querySelector(`input[data-calcfield="${cf}"]`);
     if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {} }
   }
 };
