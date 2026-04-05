@@ -26,6 +26,8 @@
     body { font-family: 'Rubik','Helvetica Neue',sans-serif; background: var(--bg); color: var(--txtPrimary); min-height: 100vh; overscroll-behavior: none; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-thumb { background: var(--zachtgrijs); border-radius: 3px; }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
 
     /* Login */
     #login-screen { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
@@ -1292,7 +1294,7 @@ function renderModal() {
   if (!modal) { mc.innerHTML = ''; return; }
   const c = C();
 
-  let html = `<div class="modal-overlay" data-action="closeModal">`;
+  let html = `<div class="modal-overlay" onmousedown="this._mdTarget=event.target" onclick="if(event.target===this&&this._mdTarget===this)KB.closeModal()" data-action="modalBody">`;
   let w = 480;
   let title = '';
   let body = '';
@@ -1982,16 +1984,10 @@ function renderAdminModal(c) {
       ${bkMsg ? `<div style="font-size:11px;margin-top:8px;color:${bkOk?c.groen:c.rood}">${esc(bkMsg)}</div>` : ''}
     </div>
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
-        <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
-      </div>
-    </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Help</div>
       <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" data-action="showHelp">? Handleiding openen</button>
     </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px">
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Feedback</div>
       <div style="font-size:11px;color:${c.grijs};margin-bottom:8px;font-weight:300">Bug melden of feature aanvragen</div>
       <div class="field" style="margin-bottom:6px"><select onchange="KB.mf('fbType',this.value)" style="font-size:12px">
@@ -2001,6 +1997,12 @@ function renderAdminModal(c) {
       <div class="field" style="margin-bottom:6px"><textarea placeholder="Beschrijf het probleem of idee\u2026" style="font-size:12px;min-height:60px" oninput="KB.mf('fbMsg',this.value)">${esc(d.fbMsg||'')}</textarea></div>
       ${d.fbSent ? `<div style="font-size:11px;color:${c.groen};margin-bottom:6px">${esc(d.fbSent)}</div>` : ''}
       <button class="btn btn-black btn-sm" data-action="sendFeedback">Verstuur</button>
+    </div>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:${c.txtSecondary}">Sessie beëindigen</span>
+        <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
+      </div>
     </div>`;
 }
 
@@ -2076,6 +2078,19 @@ KB.importBackup = async function(file) {
 };
 
 // Calculator field helper — herbereken omzet/honorarium bij wijziging
+KB.closeModal = function() {
+  if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
+  const returnMap = STATE.ui._returnToMap;
+  if (STATE.ui.modalDirty) {
+    showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
+      STATE.ui.modalDirty = false;
+      if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
+      else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
+    }); return;
+  }
+  if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; STATE.ui.modalDirty = false; renderModal(); initMapModal(); }
+  else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; STATE.ui.modalDirty = false; renderModal(); }
+};
 KB.helpSearch = function(val) {
   const md = STATE.ui.modalData; if (!md) return;
   md.helpSearch = val;
@@ -2115,7 +2130,7 @@ KB.mfCalc = function(field, value) {
 KB.mf = function(field, value) {
   if (STATE.ui.modalData) {
     STATE.ui.modalData[field] = value;
-    STATE.ui.modalDirty = true;
+    if (!['admin','help','finOverview','map','sysConfirm'].includes(STATE.ui.modal)) STATE.ui.modalDirty = true;
     // Herrender modal alleen als het een veld is dat de knop-status beïnvloedt
     if (['label','short','checked'].includes(field)) {
       // Bewaar actief element + cursor positie voor focus-herstel
