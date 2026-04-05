@@ -23,7 +23,7 @@
       --catGroupBg: #f7f6f4; --catHeaderBg: #eeedea;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Rubik','Helvetica Neue',sans-serif; background: var(--bg); color: var(--txtPrimary); min-height: 100vh; overscroll-behavior: none; }
+    body { font-family: 'Rubik','Helvetica Neue',sans-serif; background: var(--bg); color: var(--txtPrimary); min-height: 100vh; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-thumb { background: var(--zachtgrijs); border-radius: 3px; }
     input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -194,7 +194,6 @@
 
     /* ─── MOBIEL (< 768px) ─── */
     @media (max-width: 767px) {
-      html, body { overflow: hidden; }
 
       /* Header compact */
       .header { padding: 10px 12px; gap: 6px; }
@@ -2436,7 +2435,7 @@ function setupEventListeners() {
       case 'sendFeedback': {
         const md = STATE.ui.modalData; if (!md) break;
         if (!md.fbMsg || !md.fbMsg.trim()) { md.fbSent = ''; renderModal(); break; }
-        const fbRef = db.ref('feedback').push();
+        const fbRef = db.ref('meta/feedback').push();
         fbRef.set({type:md.fbType||'bug', msg:md.fbMsg.trim(), at:new Date().toISOString(), ua:navigator.userAgent}).then(() => {
           md.fbMsg = ''; md.fbSent = 'Bedankt! Feedback verstuurd.'; renderModal();
         }).catch(err => { md.fbSent = 'Fout: '+err.message; renderModal(); });
