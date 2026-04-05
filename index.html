@@ -456,12 +456,18 @@ function honDefaults() {
   return { bkm2: hd?.bkm2 ?? 2000, honPct: hd?.honPct ?? 4 };
 }
 function calcHon(md) {
+  const ct = md.calcType || 'bvo';
+  if (ct === 'units') {
+    const units = Number(md.units) || 0;
+    const ppu = Number(md.pricePerUnit) || 0;
+    return { honorarium: Math.round(units * ppu) };
+  }
+  if (ct === 'fixed') return { honorarium: Number(md.honorarium) || 0 };
+  // bvo (default)
   const bvo = Number(md.bvo) || 0;
   const bkm2 = Number(md.bkm2) || 0;
   const honPct = Number(md.honPct) || 0;
-  const omzet = Math.round(bvo * bkm2);
-  const honorarium = Math.round(omzet * honPct / 100);
-  return { omzet, honorarium };
+  return { honorarium: Math.round(bvo * bkm2 * honPct / 100) };
 }
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function mapsUrl(a) { return a ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}` : null; }
@@ -881,6 +887,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">vrij</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
       ${(() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return gw > 0 ? `<div class="header-stat" style="cursor:pointer" data-action="showFinOverview" title="Financieel overzicht"><div class="header-stat-val">${fmtEuro(Math.round(gw))}</div><div class="header-stat-lbl">verwacht</div></div>` : ''; })()}
+      <button data-noprint title="Financieel overzicht" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon">\uD83D\uDCB0</span></button>
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
       <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleDark"><span class="header-icon">${STATE.ui.dark?'\u2600':'\u263E'}</span></button>
       <button data-noprint title="Print het board" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="print"><span class="header-icon">\uD83D\uDDA8</span></button>
@@ -1396,13 +1403,33 @@ function renderEditMatchModal(c) {
     </div>
     <div style="border:1px solid ${c.zachtgrijs};border-radius:4px;margin-bottom:10px;overflow:hidden">
       <div style="padding:7px 10px;background:${c.lichtgrijs};cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:500;color:${c.grijs}" data-action="toggleCalc">\uD83D\uDCB0 Honorariumcalculator <span style="font-size:9px">${md._calcOpen?'\u25B2':'\u25BC'}</span></div>
-      ${md._calcOpen ? `<div style="padding:10px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="field" style="margin-bottom:0"><label>Bouwkosten/m\u00B2 (\u20AC)</label><input type="number" min="0" data-calcfield="bkm2" value="${md.bkm2||''}" oninput="KB.mfCalc('bkm2',this.value?Number(this.value):0)"></div>
-          <div class="field" style="margin-bottom:0"><label>Honorarium %</label><input type="number" min="0" max="100" step="0.5" data-calcfield="honPct" value="${md.honPct||''}" oninput="KB.mfCalc('honPct',this.value?Number(this.value):0)"></div>
-        </div>
-        ${md.bvo ? (() => { const r = calcHon(md); return `<div style="font-size:10px;color:${c.grijs};font-weight:300">${md.bvo}m\u00B2 \u00D7 \u20AC${(md.bkm2||honDefaults().bkm2).toLocaleString('nl-NL')} = ${fmtEuro(r.omzet)} bouwkosten \u2192 ${md.honPct||honDefaults().honPct}% = ${fmtEuro(r.honorarium)}</div>`; })() : ''}
-      </div>` : ''}
+      ${md._calcOpen ? (() => {
+        const ct = md.calcType||'bvo';
+        let calcBody = '';
+        if (ct === 'bvo') {
+          calcBody = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div class="field" style="margin-bottom:0"><label>Bouwkosten/m\u00B2 (\u20AC)</label><input type="number" min="0" data-calcfield="bkm2" value="${md.bkm2||''}" oninput="KB.mfCalc('bkm2',this.value?Number(this.value):0)"></div>
+            <div class="field" style="margin-bottom:0"><label>Honorarium %</label><input type="number" min="0" max="100" step="0.5" data-calcfield="honPct" value="${md.honPct||''}" oninput="KB.mfCalc('honPct',this.value?Number(this.value):0)"></div>
+          </div>
+          ${md.bvo && md.bkm2 ? `<div style="font-size:10px;color:${c.grijs};font-weight:300">${md.bvo}m\u00B2 \u00D7 \u20AC${(md.bkm2||0).toLocaleString('nl-NL')} = ${fmtEuro(md.bvo*md.bkm2)} bouwkosten \u2192 ${md.honPct||0}% = ${fmtEuro(calcHon(md).honorarium)}</div>` : ''}`;
+        } else if (ct === 'units') {
+          calcBody = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div class="field" style="margin-bottom:0"><label>Aantal units</label><input type="number" min="0" data-calcfield="units" value="${md.units||''}" oninput="KB.mfCalc('units',this.value?Number(this.value):0)"></div>
+            <div class="field" style="margin-bottom:0"><label>Prijs per unit (\u20AC)</label><input type="number" min="0" data-calcfield="pricePerUnit" value="${md.pricePerUnit||''}" oninput="KB.mfCalc('pricePerUnit',this.value?Number(this.value):0)"></div>
+          </div>
+          ${md.units && md.pricePerUnit ? `<div style="font-size:10px;color:${c.grijs};font-weight:300">${md.units} units \u00D7 \u20AC${(md.pricePerUnit||0).toLocaleString('nl-NL')} = ${fmtEuro(calcHon(md).honorarium)}</div>` : ''}`;
+        } else {
+          calcBody = `<div style="font-size:11px;color:${c.grijs};font-weight:300">Vul het honorarium hierboven direct in.</div>`;
+        }
+        return `<div style="padding:10px">
+          <div class="field" style="margin-bottom:8px"><label>Berekening</label><select data-calcfield="calcType" onchange="KB.mfCalc('calcType',this.value)">
+            <option value="bvo" ${ct==='bvo'?'selected':''}>BVO \u00D7 bouwkosten \u00D7 %</option>
+            <option value="units" ${ct==='units'?'selected':''}>Aantal units \u00D7 prijs</option>
+            <option value="fixed" ${ct==='fixed'?'selected':''}>Vast bedrag</option>
+          </select></div>
+          ${calcBody}
+        </div>`;
+      })() : ''}
     </div>
     <div class="field"><label>Notitie</label><textarea oninput="KB.mf('notitie',this.value)">${esc(md.notitie||'')}</textarea></div>
     <div class="field"><label>Fase</label><select onchange="KB.mfStage(this.value)">
@@ -1635,14 +1662,14 @@ function renderFinOverviewModal(c) {
   const getVal = (mid, field, orig) => edits[mid]?.[field] !== undefined ? edits[mid][field] : orig;
   let totalHon = 0;
   let totalGw = 0;
-  let html = `<div style="font-size:11px;color:${c.grijs};margin-bottom:10px;font-weight:300">Bewerk BVO, bouwkosten/m\u00B2, honorarium% en honorarium per match. Wijzigingen worden direct opgeslagen.</div>`;
+  let html = `<div style="font-size:11px;color:${c.grijs};margin-bottom:10px;font-weight:300">Bewerk financiële gegevens per match. Wijzigingen worden direct opgeslagen.</div>`;
   html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
   html += `<thead><tr style="border-bottom:2px solid ${c.zachtgrijs};text-align:left">
     <th style="padding:6px 4px;font-weight:600;min-width:120px">Kans</th>
     <th style="padding:6px 4px;font-weight:600;text-align:center">Fase</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:70px">BVO</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:70px">BK/m\u00B2</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:50px">%</th>
+    <th style="padding:6px 4px;font-weight:600;text-align:center;min-width:60px">Type</th>
+    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:60px">Veld 1</th>
+    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:60px">Veld 2</th>
     <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:80px">Honorarium</th>
     <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:70px">Gewogen</th>
   </tr></thead><tbody>`;
@@ -1652,21 +1679,36 @@ function renderFinOverviewModal(c) {
     if (!kans) return;
     const sc = stageColor(m.stage);
     const stage = STAGES.find(s => s.id === m.stage);
-    const bvo = getVal(m.id, 'bvo', m.bvo||0);
-    const bkm2 = getVal(m.id, 'bkm2', m.bkm2||0);
-    const honPct = getVal(m.id, 'honPct', m.honPct||0);
+    const ct = getVal(m.id, 'calcType', m.calcType||'bvo');
     const hon = getVal(m.id, 'honorarium', m.honorarium||0);
     const gw = Math.round(hon * stagePct(m.stage) / 100);
     totalHon += hon;
     totalGw += gw;
     const stageChanged = m.stage !== prevStage;
     prevStage = m.stage;
+    const inp = `style="width:100%;text-align:right;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
+    let field1 = '', field2 = '', typeLabel = '';
+    if (ct === 'bvo') {
+      typeLabel = 'BVO';
+      const bvo = getVal(m.id,'bvo',m.bvo||0); const bkm2 = getVal(m.id,'bkm2',m.bkm2||0);
+      field1 = `<input type="number" min="0" value="${bvo||''}" ${inp} oninput="KB.finEdit('${m.id}','bvo',this.value)" placeholder="BVO">`;
+      field2 = `<input type="number" min="0" value="${bkm2||''}" ${inp} oninput="KB.finEdit('${m.id}','bkm2',this.value)" placeholder="BK/m\u00B2">`;
+    } else if (ct === 'units') {
+      typeLabel = 'Units';
+      const units = getVal(m.id,'units',m.units||0); const ppu = getVal(m.id,'pricePerUnit',m.pricePerUnit||0);
+      field1 = `<input type="number" min="0" value="${units||''}" ${inp} oninput="KB.finEdit('${m.id}','units',this.value)" placeholder="Aantal">`;
+      field2 = `<input type="number" min="0" value="${ppu||''}" ${inp} oninput="KB.finEdit('${m.id}','pricePerUnit',this.value)" placeholder="\u20AC/unit">`;
+    } else {
+      typeLabel = 'Vast';
+      field1 = `<input type="number" min="0" value="${hon||''}" ${inp} oninput="KB.finEdit('${m.id}','honorarium',this.value)" placeholder="Honorarium">`;
+      field2 = '';
+    }
     html += `<tr style="${stageChanged?'border-top:2px solid '+sc+'44':''};border-bottom:1px solid ${c.zachtgrijs}22">
       <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
       <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
-      <td style="padding:2px 1px"><input type="number" min="0" value="${bvo||''}" style="width:100%;text-align:right;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" oninput="KB.finEdit('${m.id}','bvo',this.value)"></td>
-      <td style="padding:2px 1px"><input type="number" min="0" value="${bkm2||''}" style="width:100%;text-align:right;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" oninput="KB.finEdit('${m.id}','bkm2',this.value)"></td>
-      <td style="padding:2px 1px"><input type="number" min="0" max="100" step="0.5" value="${honPct||''}" style="width:100%;text-align:right;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" oninput="KB.finEdit('${m.id}','honPct',this.value)"></td>
+      <td style="padding:5px 4px;text-align:center;font-size:10px;color:${c.grijs}">${typeLabel}</td>
+      <td style="padding:2px 1px">${field1}</td>
+      <td style="padding:2px 1px">${field2}</td>
       <td style="padding:5px 4px;text-align:right;font-weight:500;color:${hon?c.txtPrimary:c.grijs}">${hon ? fmtEuro(hon) : '\u2014'}</td>
       <td style="padding:5px 4px;text-align:right;color:${sc};font-weight:400">${gw ? fmtEuro(gw) : '\u2014'}</td>
     </tr>`;
@@ -1685,13 +1727,14 @@ KB.finEdit = function(matchId, field, value) {
   if (!md.finEdits[matchId]) md.finEdits[matchId] = {};
   const v = value ? Number(value) : 0;
   md.finEdits[matchId][field] = v;
-  // Herbereken honorarium als bvo/bkm2/honPct wijzigt
+  // Herbereken honorarium op basis van calcType
   const m = STATE.data.matches[matchId];
-  if (m && ['bvo','bkm2','honPct'].includes(field)) {
-    const bvo = md.finEdits[matchId].bvo !== undefined ? md.finEdits[matchId].bvo : (m.bvo||0);
-    const bkm2 = md.finEdits[matchId].bkm2 !== undefined ? md.finEdits[matchId].bkm2 : (m.bkm2||0);
-    const honPct = md.finEdits[matchId].honPct !== undefined ? md.finEdits[matchId].honPct : (m.honPct||0);
-    const honorarium = Math.round(bvo * bkm2 * honPct / 100);
+  if (m && ['bvo','bkm2','honPct','units','pricePerUnit'].includes(field)) {
+    const ct = md.finEdits[matchId].calcType || m.calcType || 'bvo';
+    const gv = (f, fb) => md.finEdits[matchId][f] !== undefined ? md.finEdits[matchId][f] : (m[f]||fb||0);
+    let honorarium = 0;
+    if (ct === 'bvo') honorarium = Math.round(gv('bvo') * gv('bkm2') * gv('honPct') / 100);
+    else if (ct === 'units') honorarium = Math.round(gv('units') * gv('pricePerUnit'));
     md.finEdits[matchId].honorarium = honorarium;
   }
   // Direct opslaan naar Firebase
@@ -2101,19 +2144,23 @@ KB.mfCalc = function(field, value) {
   const md = STATE.ui.modalData; if (!md) return;
   md[field] = value;
   STATE.ui.modalDirty = true;
-  if (['bvo','bkm2','honPct'].includes(field)) {
-    const newHon = calcHon(md).honorarium;
-    if (md.honorarium && md.honorarium !== newHon && !md._calcConfirmed) {
-      const prevVal = md['_prev_'+field] ?? value;
-      showConfirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`, () => {
-        md._calcConfirmed = true;
-        md.honorarium = newHon;
-        STATE.ui.modal = 'editMatch'; renderModal();
-      });
-      md[field] = prevVal;
-      return;
+  const calcFields = ['bvo','bkm2','honPct','units','pricePerUnit','calcType'];
+  if (calcFields.includes(field)) {
+    if (field === 'calcType' && value === 'fixed') { md._calcConfirmed = false; }
+    else if (field !== 'calcType') {
+      const newHon = calcHon(md).honorarium;
+      if (md.honorarium && md.honorarium !== newHon && !md._calcConfirmed) {
+        const prevVal = md['_prev_'+field] ?? value;
+        showConfirm(`Honorarium wijzigt van ${fmtEuro(md.honorarium)} naar ${fmtEuro(newHon)}. Doorgaan?`, () => {
+          md._calcConfirmed = true;
+          md.honorarium = newHon;
+          STATE.ui.modal = 'editMatch'; renderModal();
+        });
+        md[field] = prevVal;
+        return;
+      }
+      md.honorarium = newHon;
     }
-    md.honorarium = newHon;
   }
   md['_prev_'+field] = value;
   const ae = document.activeElement;
@@ -2584,7 +2631,7 @@ function setupEventListeners() {
         } else {
           const cnt = objToArr(STATE.data.matches).filter(m => m.stage === stg).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[kansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0});
+          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0});
           STATE.ui.modal = null; renderModal();
         }
         break;
@@ -2596,8 +2643,8 @@ function setupEventListeners() {
           STATE.ui.modal = 'editMatch';
           STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0),
-            bkm2: m.bkm2 || 0,
-            honPct: m.honPct || 0,
+            bkm2: m.bkm2 || 0, honPct: m.honPct || 0,
+            calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0,
             _calcOpen: !(m.honorarium)
           };
           STATE.ui.modalExtra = null; renderModal();
@@ -2607,7 +2654,7 @@ function setupEventListeners() {
       case 'saveMatch': {
         const md = STATE.ui.modalData; if (!md) break;
         const origM = STATE.data.matches[md.id];
-        const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0};
+        const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0,calcType:md.calcType||'bvo',units:md.units||0,pricePerUnit:md.pricePerUnit||0};
         // StageHistory bijwerken als stage gewijzigd
         if (origM && origM.stage !== md.stage) {
           upd.stageHistory = [...(origM.stageHistory||[]), {stage:md.stage, at:today()}];
@@ -2804,7 +2851,7 @@ function setupEventListeners() {
         if (m) {
           const kans = STATE.data.kansen[m.kid];
           STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
-            bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, _calcOpen: !(m.honorarium)
+            bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0, _calcOpen: !(m.honorarium)
           }; STATE.ui.modalExtra = null; renderModal();
         }
         break;
@@ -2842,7 +2889,7 @@ function setupEventListeners() {
           // Nieuwe match via + knop met stage gate
           const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[ex.newMatchKansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0});
+          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0});
           STATE.ui.modal = null; renderModal();
         }
         break;
