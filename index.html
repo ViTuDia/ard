@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --bg: #fafaf9; --header: #d9a300; --headerTxt: #000; --headerSub: #00000088; --headerDiv: #00000033;
@@ -135,6 +137,10 @@
     .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 12px; font-weight: 500; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex; align-items: center; gap: 12px; }
     .toast .undo-btn { background: var(--geel); color: #000; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
     .toast.show { opacity: 1; pointer-events: auto; }
+    #map-container { z-index: 0; border-radius: 4px; }
+    .map-legend { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px; font-size:11px; color:var(--grijs); font-weight:300; }
+    .map-legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 2px rgba(0,0,0,0.3); display:inline-block; vertical-align:middle; margin-right:3px; }
+    .map-status { font-size:11px; color:var(--grijs); margin-top:8px; font-weight:300; }
 
     /* Firebase verbindingsindicator */
     .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
@@ -457,6 +463,25 @@ function calcHon(md) {
 }
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function mapsUrl(a) { return a ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}` : null; }
+
+// ─── GEOCODING ──────────────────────────────────
+const _geocodeMemCache = {};
+async function geocodeAddress(adres) {
+  if (!adres) return null;
+  if (_geocodeMemCache[adres]) return _geocodeMemCache[adres];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&countrycodes=nl&limit=1`;
+    const res = await fetch(url, {headers:{'User-Agent':'DeKoppelbaas/1.0'}});
+    const data = await res.json();
+    if (data && data[0]) {
+      const r = {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
+      _geocodeMemCache[adres] = r;
+      return r;
+    }
+  } catch(e) { console.warn('Geocode fout:', e); }
+  return null;
+}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function objToArr(obj) {
   if (!obj) return [];
@@ -857,6 +882,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">\u26A0</span> ${al} alert${al!==1?'s':''}</button>
       <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleDark"><span class="header-icon">${STATE.ui.dark?'\u2600':'\u263E'}</span></button>
       <button data-noprint title="Print het board" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="print"><span class="header-icon">\uD83D\uDDA8</span></button>
+      <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">\uD83D\uDDFA</span></button>
       <button data-noprint title="Admin & help" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showAdmin"><span class="header-icon">\u2699</span></button>
     </div>
   </div>`;
@@ -1287,6 +1313,7 @@ function renderModal() {
     case 'admin': { w=440; title='\u2699 Admin'; body = renderAdminModal(c); break; }
     case 'help': { w=540; title='? Help'; body = renderHelpModal(c); break; }
     case 'finOverview': { w=700; title='\uD83D\uDCB0 Financieel overzicht'; body = renderFinOverviewModal(c); break; }
+    case 'map': { w=800; title='\uD83D\uDDFA Kaart'; body = renderMapModal(c); break; }
     case 'sysConfirm': {
       w=380; title='Bevestigen';
       const cmsg = STATE.ui.modalData?.confirmMsg || '';
@@ -1682,6 +1709,105 @@ KB.finEdit = function(matchId, field, value) {
   }
 };
 
+function renderMapModal(c) {
+  const allK = sortedArr(STATE.data.kansen);
+  const noAddr = allK.filter(k => !k.adres).length;
+  return `<div id="map-container" style="width:100%;height:60vh"></div>
+    <div class="map-status" id="map-status">${noAddr ? noAddr + ' kans(en) zonder adres' : ''}</div>
+    <div class="map-legend">
+      <span><span class="map-legend-dot" style="background:#878786"></span> Ongematchte kans</span>
+      <span><span class="map-legend-dot" style="background:${stageColor('matches')}"></span> Potentieel</span>
+      <span><span class="map-legend-dot" style="background:${stageColor('verkennend')}"></span> Verkennend</span>
+      <span><span class="map-legend-dot" style="background:${stageColor('offerte')}"></span> Offerte</span>
+      <span><span class="map-legend-dot" style="background:${stageColor('actief')}"></span> Actief</span>
+    </div>`;
+}
+
+function kansStageColor(kansId) {
+  const order = {matches:1,verkennend:2,offerte:3,actief:4};
+  let best = 0, bestStage = null;
+  objToArr(STATE.data.matches).filter(m => m.kid === kansId).forEach(m => {
+    const o = order[m.stage]||0;
+    if (o > best) { best = o; bestStage = m.stage; }
+  });
+  return bestStage ? stageColor(bestStage) : '#878786';
+}
+
+async function initMapModal() {
+  const container = document.getElementById('map-container');
+  if (!container || typeof L === 'undefined') return;
+  const map = L.map('map-container').setView([51.92, 4.48], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+  STATE.ui._mapInstance = map;
+
+  const allK = sortedArr(STATE.data.kansen).filter(k => k.adres);
+  const markers = [];
+  const statusEl = document.getElementById('map-status');
+  let geocoded = 0;
+
+  // Phase 1: add cached markers immediately
+  const toGeocode = [];
+  allK.forEach(k => {
+    if (k.lat && k.lng) {
+      markers.push(addMapMarker(map, k, k.lat, k.lng));
+    } else {
+      toGeocode.push(k);
+    }
+  });
+  if (markers.length > 0) fitMapBounds(map, markers);
+
+  // Phase 2: geocode uncached addresses progressively
+  for (let i = 0; i < toGeocode.length; i++) {
+    if (!STATE.ui._mapInstance) return; // modal closed
+    const k = toGeocode[i];
+    if (statusEl) statusEl.textContent = `Adressen laden: ${++geocoded}/${toGeocode.length}...`;
+    const coords = await geocodeAddress(k.adres);
+    if (coords) {
+      // Cache in Firebase
+      fbUpdate(`kansen/${k.id}`, {lat:coords.lat, lng:coords.lng});
+      markers.push(addMapMarker(map, k, coords.lat, coords.lng));
+      if (markers.length <= 3 || i === toGeocode.length - 1) fitMapBounds(map, markers);
+    }
+    if (i < toGeocode.length - 1) await delay(1100); // Nominatim rate limit
+  }
+  const noAddr = sortedArr(STATE.data.kansen).filter(k => !k.adres).length;
+  if (statusEl) statusEl.textContent = (toGeocode.length > 0 ? `${markers.length} locatie(s) geladen. ` : '') + (noAddr ? noAddr + ' kans(en) zonder adres' : '');
+}
+
+function addMapMarker(map, kans, lat, lng) {
+  const color = kansStageColor(kans.id);
+  const matches = objToArr(STATE.data.matches).filter(m => m.kid === kans.id);
+  const stageInfo = matches.length > 0 ? matches.map(m => {
+    const s = STAGES.find(st => st.id === m.stage);
+    return `<span style="display:inline-block;padding:1px 6px;font-size:9px;border-radius:2px;color:${stageColor(m.stage)};background:${stageBg(m.stage)};border:1px solid ${stageColor(m.stage)}33">${esc(s?.short||'?')}</span>`;
+  }).join(' ') : '<span style="font-size:10px;color:#878786">Ongematchte kans</span>';
+  const marker = L.circleMarker([lat, lng], {
+    radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.85
+  }).addTo(map);
+  marker.bindPopup(`<div style="font-family:Rubik,sans-serif;min-width:180px">
+    <div style="font-weight:600;font-size:13px;margin-bottom:3px">${esc(kans.name)}</div>
+    <div style="font-size:11px;color:#666;margin-bottom:4px">\uD83D\uDCCD ${esc(kans.adres)}</div>
+    <div style="margin-bottom:6px">${stageInfo}</div>
+    ${kans.omvang ? `<div style="font-size:10px;color:#888;margin-bottom:4px">BVO ${esc(kans.omvang)}m\u00B2</div>` : ''}
+    <a href="#" onclick="KB.mapEditKans('${kans.id}');return false" style="color:#006f9d;font-size:11px;text-decoration:none">Bewerk kans \u2192</a>
+  </div>`);
+  return marker;
+}
+KB.mapEditKans = function(kansId) {
+  if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
+  const k = STATE.data.kansen[kansId];
+  if (k) { STATE.ui.modal = 'editKans'; STATE.ui.modalData = {...k, id:kansId}; STATE.ui.modalExtra = null; STATE.ui.modalDirty = false; renderModal(); }
+};
+
+function fitMapBounds(map, markers) {
+  if (markers.length > 0) {
+    const group = L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.15));
+  }
+}
+
 function renderHelpModal(c) {
   const q = (STATE.ui.modalData?.helpSearch || '').toLowerCase();
   const chapters = [
@@ -2069,6 +2195,7 @@ function setupEventListeners() {
         }
         return;
       }
+      if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
       if (STATE.ui.modalDirty) {
         showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
           STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
@@ -2211,6 +2338,9 @@ function setupEventListeners() {
       case 'showFinOverview':
         STATE.ui.modal = 'finOverview'; STATE.ui.modalData = {finEdits:{}}; STATE.ui.modalExtra = null;
         renderModal(); break;
+      case 'showMap':
+        STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
+        renderModal(); initMapModal(); break;
       case 'showHelp':
         STATE.ui.modal = 'help'; STATE.ui.modalData = {helpSearch:'',helpOpen:{}}; STATE.ui.modalExtra = null;
         renderModal(); break;
@@ -2315,9 +2445,11 @@ function setupEventListeners() {
         const k = STATE.ui.modalData; if (!k) break;
         if (k.isNew) {
           const so = objToArr(STATE.data.kansen).length;
-          fbPush('kansen', {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',so,createdAt:today(),updatedAt:today(),ownerId:null});
+          fbPush('kansen', {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',so,createdAt:today(),updatedAt:today(),ownerId:null,lat:null,lng:null});
         } else {
-          fbUpdate(`kansen/${k.id}`, {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',updatedAt:today()});
+          const existing = STATE.data.kansen[k.id];
+          const adresChanged = existing && existing.adres !== (k.adres||'');
+          fbUpdate(`kansen/${k.id}`, {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',updatedAt:today(), ...(adresChanged ? {lat:null,lng:null} : {})});
           // Sync BVO naar alle matches voor deze kans
           const newBvo = k.omvang ? Number(k.omvang) : 0;
           objToArr(STATE.data.matches).filter(m => m.kid === k.id).forEach(m => {
@@ -2650,6 +2782,7 @@ function setupEventListeners() {
       // Modal sluiten
       case 'modalBody': break; // absorbeert clicks op lege modal-ruimte
       case 'closeModal':
+        if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
         if (STATE.ui.modalDirty) {
           showConfirm('Wijzigingen niet opgeslagen. Sluiten?', () => {
             STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
