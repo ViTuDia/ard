@@ -1326,7 +1326,8 @@ function renderModal() {
     }
   }
 
-  html += `<div class="modal" style="max-width:${w}px" data-action="modalBody">`;
+  const resizable = STATE.ui.modal === 'map';
+  html += `<div class="modal" style="max-width:${w}px${resizable?';resize:both;overflow:auto;min-width:400px;min-height:400px':''}" data-action="modalBody">`;
   html += `<div class="modal-head"><h3>${title}</h3><button class="btn-icon" style="font-size:18px" data-action="closeModal">\u2715</button></div>`;
   html += `<div class="modal-body">${body}</div>`;
   html += '</div></div>';
@@ -1744,6 +1745,9 @@ async function initMapModal() {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
   }).addTo(map);
   STATE.ui._mapInstance = map;
+  // Kaart meeresizen met modal
+  const ro = new ResizeObserver(() => { if (STATE.ui._mapInstance) STATE.ui._mapInstance.invalidateSize(); });
+  ro.observe(container);
 
   const allK = sortedArr(STATE.data.kansen).filter(k => k.adres);
   const markers = [];
