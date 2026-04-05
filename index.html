@@ -1703,7 +1703,11 @@ function renderFinOverviewModal(c) {
       field1 = `<input type="number" min="0" value="${hon||''}" ${inp} oninput="KB.finEdit('${m.id}','honorarium',this.value)" placeholder="Honorarium">`;
       field2 = '';
     }
-    html += `<tr style="${stageChanged?'border-top:1px solid '+c.zachtgrijs:''};border-bottom:1px solid ${c.zachtgrijs}22">
+    if (stageChanged) {
+      const stageCnt = matches.filter(x => x.stage === m.stage && STATE.data.kansen[x.kid]).length;
+      html += `<tr><td colspan="7" style="padding:8px 4px 4px;font-size:12px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
+    }
+    html += `<tr style="border-bottom:1px solid ${c.zachtgrijs}22">
       <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
       <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
       <td style="padding:2px 1px"><select style="width:100%;padding:2px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:10px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" onchange="KB.finEditType('${m.id}',this.value)">
