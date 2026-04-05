@@ -1326,10 +1326,9 @@ function renderModal() {
     }
   }
 
-  const resizable = STATE.ui.modal === 'map';
-  html += `<div class="modal" style="max-width:${resizable?'90vw':w+'px'}${resizable?';resize:both;overflow:hidden;min-width:400px;min-height:400px;width:'+w+'px;display:flex;flex-direction:column':''}" data-action="modalBody">`;
-  html += `<div class="modal-head" style="${resizable?'flex-shrink:0':''}"><h3>${title}</h3><button class="btn-icon" style="font-size:18px" data-action="closeModal">\u2715</button></div>`;
-  html += `<div class="modal-body" style="${resizable?'flex:1;overflow:hidden':''}">${body}</div>`;
+  html += `<div class="modal" style="max-width:${w}px" data-action="modalBody">`;
+  html += `<div class="modal-head"><h3>${title}</h3><button class="btn-icon" style="font-size:18px" data-action="closeModal">\u2715</button></div>`;
+  html += `<div class="modal-body">${body}</div>`;
   html += '</div></div>';
   mc.innerHTML = html;
 }
@@ -1713,8 +1712,7 @@ KB.finEdit = function(matchId, field, value) {
 function renderMapModal(c) {
   const allK = sortedArr(STATE.data.kansen);
   const noAddr = allK.filter(k => !k.adres).length;
-  return `<div style="display:flex;flex-direction:column;height:100%">
-    <div id="map-container" style="width:100%;flex:1;min-height:300px"></div>
+  return `<div id="map-container" style="width:100%;height:60vh"></div>
     <div class="map-status" id="map-status">${noAddr ? noAddr + ' kans(en) zonder adres' : ''}</div>
     <div class="map-legend">
       <span><span class="map-legend-dot" style="background:#c22d0b"></span> Ongematcht</span>
@@ -1724,7 +1722,7 @@ function renderMapModal(c) {
       <span><span class="map-legend-dot" style="background:${stageColor('actief')}"></span> Actief</span>
       <span style="margin-left:8px;border-left:1px solid ${c.zachtgrijs};padding-left:8px"><span class="map-legend-dot" style="background:${c.grijs};border-color:#c22d0b"></span> Geen match</span>
       <span><span class="map-legend-dot" style="background:${c.grijs};border-color:#c97b1a"></span> Te weinig</span>
-    </div></div>`;
+    </div>`;
 }
 
 function kansStageColor(kansId) {
@@ -1748,9 +1746,6 @@ async function initMapModal() {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
   }).addTo(map);
   STATE.ui._mapInstance = map;
-  // Kaart meeresizen met modal
-  const ro = new ResizeObserver(() => { if (STATE.ui._mapInstance) STATE.ui._mapInstance.invalidateSize(); });
-  ro.observe(container);
 
   const allK = sortedArr(STATE.data.kansen).filter(k => k.adres);
   const markers = [];
