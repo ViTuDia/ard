@@ -2130,7 +2130,7 @@ function renderAdminModal(c) {
           <span style="display:flex;align-items:center;gap:4px"><span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0"></span>${STATE.ui.connected?'Verbonden':'Offline'}</span>
           ${hasFeedback?`<a href="${fbUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;color:${c.rood};text-decoration:none"><span class="conn-dot" style="background:${c.rood};margin:0"></span>Feedback</a>`:''}
         </div>
-        <button style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22;border-radius:3px;padding:4px 12px;cursor:pointer;font-family:inherit" data-action="logout">Uitloggen</button>
+        <button class="btn btn-sm" style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22" data-action="logout">Uitloggen</button>
       </div>
     </div>`;
 }
