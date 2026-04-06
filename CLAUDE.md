@@ -128,9 +128,10 @@ Feature: iCal-feed met geplande contactmomenten per match + signaleringssysteem.
 - Header of admin: "iCal exporteren" knop → genereert .ics bestand
 ### iCal feed
 - **Dynamische iCal URL** die je in Google Calendar / Apple Calendar / Outlook abonneert
-- URL serveert altijd actuele contactmomenten uit Firebase (geen eenmalige export)
-- Technisch: een aparte endpoint (bijv. `ical.html` of Firebase Cloud Function) die een .ics genereert bij elke request
-- Alternatief zonder backend: een `webcal://` link die een statisch .ics bestand op GitHub Pages plaatst, periodiek bijgewerkt door de app zelf (bij elke save een .ics regenereren en opslaan)
+- URL serveert altijd actuele contactmomenten uit Firebase
+- Technisch: **Firebase Cloud Function** (HTTP trigger) die bij elke request de contactmomenten uit de Realtime Database leest en een .ics genereert
+- Resultaat: `https://us-central1-atelierruimdenkers-d47d6.cloudfunctions.net/ical` → subscribable webcal:// link
+- Firebase project is al ingericht (atelierruimdenkers-d47d6), Cloud Functions moet mogelijk nog geactiveerd worden (Blaze plan vereist)
 
 ## Gepland: Cash forecast (apart project)
 - Aparte HTML-pagina, gekoppeld aan dezelfde Firebase
