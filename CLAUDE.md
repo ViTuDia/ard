@@ -126,7 +126,11 @@ Feature: iCal-feed met geplande contactmomenten per match + signaleringssysteem.
 - Match-edit modal: contactsectie met datum-picker + contactlog
 - Settings: default contactintervallen per kolom
 - Header of admin: "iCal exporteren" knop → genereert .ics bestand
-- Mogelijk: alerts integratie (contactmomenten die verlopen zijn als extra alert-type)
+### iCal feed
+- **Dynamische iCal URL** die je in Google Calendar / Apple Calendar / Outlook abonneert
+- URL serveert altijd actuele contactmomenten uit Firebase (geen eenmalige export)
+- Technisch: een aparte endpoint (bijv. `ical.html` of Firebase Cloud Function) die een .ics genereert bij elke request
+- Alternatief zonder backend: een `webcal://` link die een statisch .ics bestand op GitHub Pages plaatst, periodiek bijgewerkt door de app zelf (bij elke save een .ics regenereren en opslaan)
 
 ## Gepland: Cash forecast (apart project)
 - Aparte HTML-pagina, gekoppeld aan dezelfde Firebase
