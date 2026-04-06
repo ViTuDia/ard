@@ -2139,7 +2139,7 @@ function renderAdminModal(c) {
 KB.toggleFeature = function(key) {
   const path = key === 'actionSignaling' ? 'meta/actionSignaling' : key === 'lockEnabled' ? 'meta/lockEnabled' : 'meta/financialEnabled';
   const cur = key === 'actionSignaling' ? actionEnabled() : key === 'lockEnabled' ? lockEnabled() : financialEnabled();
-  fbUpdate(path, !cur).then(() => { renderModal(); render(); });
+  fbSet(path, !cur).then(() => { renderModal(); render(); });
 };
 
 // ─── BACKUP / IMPORT ────────────────────────────
@@ -2652,7 +2652,6 @@ function setupEventListeners() {
         break;
       }
       case 'toggleFeature': {
-        showToast('Toggle: '+id);
         KB.toggleFeature(id);
         break;
       }
