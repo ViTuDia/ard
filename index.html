@@ -358,14 +358,15 @@
     <!-- Mobiele tab-balk -->
     <div class="mob-tabs" data-noprint>
       <button class="mob-tab active" data-tab="devs" onclick="KB.mobSwitch('devs')">
-        <span class="mob-tab-icon">&#128101;</span><span class="mob-tab-label" data-tab-label="devs">Devs</span>
+        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">DEV</span><span class="mob-tab-label" data-tab-label="devs">Partijen</span>
       </button>
       <button class="mob-tab" data-tab="kansen" onclick="KB.mobSwitch('kansen')">
-        <span class="mob-tab-icon">&#127919;</span><span class="mob-tab-label" data-tab-label="kansen">Kansen</span>
+        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">LOC</span><span class="mob-tab-label" data-tab-label="kansen">Locaties</span>
       </button>
       <button class="mob-tab" data-tab="pipeline" onclick="KB.mobSwitch('pipeline')">
-        <span class="mob-tab-icon">&#128202;</span><span class="mob-tab-label" data-tab-label="pipeline">Pipeline</span>
+        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">FLO</span><span class="mob-tab-label" data-tab-label="pipeline">Pipeline</span>
       </button>
+      <div class="mob-conn-dots" style="display:flex;align-items:center;gap:4px;padding:0 8px"></div>
     </div>
   </div>
 
@@ -1353,6 +1354,11 @@ function renderFooter(c) {
   const fb = STATE.data.meta?.feedback;
   const hasFeedback = fb && Object.keys(fb).length > 0;
   const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
+  // Mobiele status-dots bijwerken
+  const mobDots = document.querySelector('.mob-conn-dots');
+  if (mobDots) {
+    mobDots.innerHTML = `<span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0"></span><span class="conn-dot" title="${hasFeedback?'Feedback ontvangen':'Geen feedback'}" style="background:${hasFeedback?'#c22d0b':'#007b2f'};margin:0"></span>`;
+  }
   return `<div class="footer">
     <span><span style="color:${c.geel};font-weight:500">/ </span>ARD / AtelierRuimDenkers \u2014 De Koppelbaas</span>
     <span>Willem Buytewechstraat 45, Rotterdam <span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin-right:0;margin-left:6px"></span><a href="${fbUrl}" target="_blank" rel="noopener" title="${hasFeedback?'Feedback ontvangen \u2014 klik om te bekijken':'Geen openstaande feedback'}"><span class="conn-dot" style="background:${hasFeedback?'#c22d0b':'#007b2f'};margin-right:0;margin-left:4px;cursor:pointer"></span></a></span>
@@ -2047,14 +2053,14 @@ function renderAdminModal(c) {
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Features</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        ${[{key:'financialEnabled',label:'Financieel overzicht',desc:'Honorarium, verwachte omzet, calculator',action:'toggleFinancial'},
-           {key:'lockEnabled',label:'Vergrendeling',desc:'Slotjes op matchkaarten, voorkom verslepen',action:'toggleLock'},
-           {key:'actionSignaling',label:'Actie-signalering',desc:'Klokjes op kaarten, waarschuw bij verlopen acties',action:'toggleActionSignaling'}
+        ${[{key:'financialEnabled',label:'Financieel overzicht',desc:'Honorarium, verwachte omzet, calculator',fn:'KB.toggleFeature("financialEnabled")'},
+           {key:'lockEnabled',label:'Vergrendeling',desc:'Slotjes op matchkaarten, voorkom verslepen',fn:'KB.toggleFeature("lockEnabled")'},
+           {key:'actionSignaling',label:'Actie-signalering',desc:'Klokjes op kaarten, waarschuw bij verlopen acties',fn:'KB.toggleFeature("actionSignaling")'}
         ].map(f => {
           const on = f.key==='actionSignaling'?actionEnabled():f.key==='lockEnabled'?lockEnabled():financialEnabled();
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
             <div><div style="font-size:12px;font-weight:500;color:${c.txtPrimary}">${f.label}</div><div style="font-size:10px;color:${c.grijs};font-weight:300">${f.desc}</div></div>
-            <div style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0" data-action="${f.action}">
+            <div style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0" onclick="${f.fn}">
               <span style="position:absolute;inset:0;border-radius:11px;background:${on?c.groen:c.zachtgrijs};transition:background .2s"></span>
               <span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
             </div>
@@ -2131,6 +2137,13 @@ function renderAdminModal(c) {
       </div>
     </div>`;
 }
+
+// ─── FEATURE TOGGLES ────────────────────────────
+KB.toggleFeature = function(key) {
+  const path = key === 'actionSignaling' ? 'meta/actionSignaling' : key === 'lockEnabled' ? 'meta/lockEnabled' : 'meta/financialEnabled';
+  const cur = key === 'actionSignaling' ? actionEnabled() : key === 'lockEnabled' ? lockEnabled() : financialEnabled();
+  fbUpdate(path, !cur).then(() => { renderModal(); render(); });
+};
 
 // ─── BACKUP / IMPORT ────────────────────────────
 KB.exportBackup = async function() {
