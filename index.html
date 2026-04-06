@@ -2041,8 +2041,7 @@ function renderAdminModal(c) {
   const fb = STATE.data.meta?.feedback;
   const hasFeedback = fb && Object.keys(fb).length > 0;
   const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
-  const _toggle = (key, on) => `<button type="button" style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0;border:none;background:none;padding:0;-webkit-appearance:none" onclick="event.stopPropagation();KB.toggleFeature('${key}')">
-    <span style="position:absolute;inset:0;border-radius:11px;background:${on?c.groen:c.zachtgrijs};transition:background .2s"></span>
+  const _toggle = (key, on) => `<button type="button" class="btn" style="position:relative;width:40px;height:22px;flex-shrink:0;border:none;background:${on?c.groen:c.zachtgrijs};padding:0;border-radius:11px;min-height:0" data-action="toggleFeature" data-id="${key}">
     <span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
   </button>`;
   return `
@@ -2654,6 +2653,10 @@ function setupEventListeners() {
         fbUpdate('meta/honDefaults', {bkm2:md.def_bkm2||2000,honPct:md.def_honPct||4}).then(() => {
           md.honMsg = 'Opgeslagen! Geldt voor nieuwe matches.'; md.honOk = true; renderModal();
         }).catch(err => { md.honMsg = 'Fout: '+err.message; md.honOk = false; renderModal(); });
+        break;
+      }
+      case 'toggleFeature': {
+        KB.toggleFeature(id);
         break;
       }
       case 'toggleActionSignaling': {
