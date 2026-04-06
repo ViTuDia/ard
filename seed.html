@@ -100,33 +100,33 @@ document.getElementById('btn').onclick = async function() {
     });
 
     // ─── Matches ───
-    // Financiële velden: bvo, bkm2, honPct, honorarium (=bvo*bkm2*honPct/100)
+    // Financiële velden: bvo, bkm2, honPct, honorarium, calcType (bvo/units/fixed), units, pricePerUnit
     // Vroege fases: vaak nog geen cijfers. Latere fases: steeds meer ingevuld.
     log('Matches...');
     await db.ref('matches').set({
       // Potentiële matches — nog geen financiële data
-      m1: {kid:"k3", links:["d1","d4"], coals:[], stage:"matches", notitie:"Eerste kennismaking gehad", col:false, so:0, createdAt:"2026-03-15", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-15"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0},
-      m2: {kid:"k5", links:["d5"], coals:[], stage:"matches", notitie:"", col:false, so:1, createdAt:"2026-03-16", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-16"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0},
-      m3: {kid:"k7", links:[], coals:[["d3","d10"]], stage:"matches", notitie:"Coalitie AM + Woonstad verkent mogelijkheden", col:false, so:2, createdAt:"2026-03-17", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-17"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0},
-      m4: {kid:"k9", links:["d12","d13"], coals:[], stage:"matches", notitie:"CPO-partijen geïnteresseerd", col:false, so:3, createdAt:"2026-03-18", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-18"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0},
+      m1: {kid:"k3", links:["d1","d4"], coals:[], stage:"matches", notitie:"Eerste kennismaking gehad", col:false, so:0, createdAt:"2026-03-15", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-15"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0, calcType:"bvo", units:0, pricePerUnit:0},
+      m2: {kid:"k5", links:["d5"], coals:[], stage:"matches", notitie:"", col:false, so:1, createdAt:"2026-03-16", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-16"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0, calcType:"bvo", units:0, pricePerUnit:0},
+      m3: {kid:"k7", links:[], coals:[["d3","d10"]], stage:"matches", notitie:"Coalitie AM + Woonstad verkent mogelijkheden", col:false, so:2, createdAt:"2026-03-17", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-17"}], ownerId:null, bvo:0, bkm2:0, honPct:0, honorarium:0, calcType:"bvo", units:0, pricePerUnit:0},
+      m4: {kid:"k9", links:["d12","d13"], coals:[], stage:"matches", notitie:"CPO-partijen geïnteresseerd", col:false, so:3, createdAt:"2026-03-18", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-18"}], ownerId:null, bvo:2100, bkm2:0, honPct:0, honorarium:216000, calcType:"units", units:45, pricePerUnit:4800},
 
       // Verkennend — deels ingevuld
       m5: {kid:"k1", links:["d2","d7"], coals:[], stage:"verkennend", notitie:"Gesprek met BPD en Greystar gepland 15 april", col:false, so:0, createdAt:"2026-03-10", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-10"},{stage:"verkennend",at:"2026-03-20"}], ownerId:null,
-        bvo:4200, bkm2:2200, honPct:4, honorarium:369600},
+        bvo:4200, bkm2:2200, honPct:4, honorarium:369600, calcType:"bvo", units:0, pricePerUnit:0},
       m6: {kid:"k4", links:["d9"], coals:[], stage:"verkennend", notitie:"Stebru heeft interesse, wacht op programma van eisen", col:false, so:1, createdAt:"2026-03-12", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-12"},{stage:"verkennend",at:"2026-03-22"}], ownerId:null,
-        bvo:6200, bkm2:1800, honPct:4, honorarium:446400},
+        bvo:6200, bkm2:1800, honPct:4, honorarium:446400, calcType:"bvo", units:0, pricePerUnit:0},
       m7: {kid:"k6", links:["d1","d11"], coals:[], stage:"verkennend", notitie:"Heijmans + Havensteder verkennen samenwerking", col:false, so:2, createdAt:"2026-03-13", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-13"},{stage:"verkennend",at:"2026-03-23"}], ownerId:null,
-        bvo:0, bkm2:0, honPct:0, honorarium:0},
+        bvo:5400, bkm2:0, honPct:0, honorarium:25000, calcType:"fixed", units:0, pricePerUnit:0},
 
       // Offerte — financieel helder
       m8: {kid:"k2", links:["d2"], coals:[["d5","d6"]], stage:"offerte", notitie:"BPD trekt, Vorm+VolkerWessels als bouwcoalitie", col:false, so:0, createdAt:"2026-03-05", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-05"},{stage:"verkennend",at:"2026-03-15"},{stage:"offerte",at:"2026-03-25"}], ownerId:null,
-        bvo:8500, bkm2:2000, honPct:4, honorarium:680000},
+        bvo:8500, bkm2:2000, honPct:4, honorarium:680000, calcType:"bvo", units:0, pricePerUnit:0},
       m9: {kid:"k8", links:["d4","d15"], coals:[], stage:"offerte", notitie:"Synchroon + RED Company maken gezamenlijk voorstel", col:false, so:1, createdAt:"2026-03-08", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-03-08"},{stage:"verkennend",at:"2026-03-18"},{stage:"offerte",at:"2026-03-26"}], ownerId:null,
-        bvo:7200, bkm2:2100, honPct:3.5, honorarium:529200},
+        bvo:7200, bkm2:2100, honPct:3.5, honorarium:529200, calcType:"bvo", units:0, pricePerUnit:0},
 
       // Actief — volledig
       m10: {kid:"k12", links:["d1","d3"], coals:[["d8","d10"]], stage:"actief", notitie:"Ontwerp in volle gang, oplevering Q4 2027", col:false, so:0, createdAt:"2026-01-15", updatedAt:"2026-03-28", stageHistory:[{stage:"matches",at:"2026-01-15"},{stage:"verkennend",at:"2026-02-01"},{stage:"offerte",at:"2026-02-20"},{stage:"actief",at:"2026-03-10"}], ownerId:null,
-        bvo:15000, bkm2:1900, honPct:4, honorarium:1140000}
+        bvo:15000, bkm2:1900, honPct:4, honorarium:1140000, calcType:"bvo", units:0, pricePerUnit:0}
     });
 
     log('');
