@@ -89,6 +89,9 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - In-app feedbackformulier in admin (Bug / Feature request → opgeslagen in meta/feedback)
 - robots.txt + noindex meta tag tegen zoekmachine-indexering
 
+## Open issues (volgende sessie)
+- **Modal scroll-sprong**: bij invoeren in velden en daarna op een button klikken verspringt de inhoud in een popup-venster. Systematische fix nodig — scroll-positie bewaren bij elke renderModal() call, niet alleen bij specifieke actions
+
 ## Bekende bugs (low priority, bewust niet gefixt)
 - `_calcConfirmed` reset niet per modal-sessie (eenmaal bevestigd = vrij wijzigen, logisch gedrag)
 - `editKansFromMatch` keert niet terug naar editMatch na sluiten (bekende UX-beperking)

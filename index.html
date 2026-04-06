@@ -1213,12 +1213,17 @@ function renderMatchCard(c, match, stage, devs, dts) {
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0">(${tl})</span>`;
   if (match.locked) html += `<span style="font-size:14px;color:${c.grijs};flex-shrink:0;opacity:0.5;line-height:1" title="Vergrendeld">\uD83D\uDD12</span>`;
   if (!match.honorarium) html += `<span style="font-size:14px;flex-shrink:0;position:relative;opacity:0.6;line-height:1" title="Geen honorarium ingevuld">\uD83D\uDCB0<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span></span>`;
-  html += `<span class="stage-badge" style="color:${sc};background:${sb};border:1px solid ${sc}33">${esc(stage.short)}</span>`;
+  html += '</div>';
+
+  // Fase + BVO (altijd zichtbaar, direct onder titel)
+  html += `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">`;
+  html += `<span class="stage-badge" style="color:${sc};background:${sb};border:1px solid ${sc}33">${esc(stage.label)}</span>`;
+  if (!isC && kans.omvang) html += `<span style="font-size:10px;color:${c.grijs};font-weight:300">BVO ${esc(kans.omvang)}m\u00B2</span>`;
   html += '</div>';
 
   // Uitgeklapte inhoud
   if (!isC) {
-    html += `<div style="font-size:11px;color:${c.grijs};margin-top:4px;font-weight:300">${kans.omvang ? 'BVO '+esc(kans.omvang)+'m\u00B2 \u00B7 ' : ''}${esc(kans.type||'')}</div>`;
+    html += `<div style="font-size:11px;color:${c.grijs};margin-top:3px;font-weight:300">${esc(kans.type||'')}</div>`;
     if (kans.adres) {
       html += '<div style="font-size:11px;margin-top:2px;font-weight:300">';
       if (mp) html += `<a href="${mp}" target="_blank" rel="noopener noreferrer" style="color:${c.blauw};text-decoration:none">\uD83D\uDCCD ${esc(kans.adres)}</a>`;
@@ -1305,9 +1310,12 @@ function renderMatchCard(c, match, stage, devs, dts) {
 }
 
 function renderFooter(c) {
+  const fb = STATE.data.meta?.feedback;
+  const hasFeedback = fb && Object.keys(fb).length > 0;
+  const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
   return `<div class="footer">
     <span><span style="color:${c.geel};font-weight:500">/ </span>ARD / AtelierRuimDenkers \u2014 De Koppelbaas</span>
-    <span>Willem Buytewechstraat 45, Rotterdam <span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin-right:0;margin-left:6px"></span></span>
+    <span>Willem Buytewechstraat 45, Rotterdam <span class="conn-dot" title="${STATE.ui.connected?'Verbonden':'Geen verbinding'}" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin-right:0;margin-left:6px"></span><a href="${fbUrl}" target="_blank" rel="noopener" title="${hasFeedback?'Feedback ontvangen \u2014 klik om te bekijken':'Geen openstaande feedback'}"><span class="conn-dot" style="background:${hasFeedback?'#c22d0b':'#007b2f'};margin-right:0;margin-left:4px;cursor:pointer"></span></a></span>
   </div>`;
 }
 
