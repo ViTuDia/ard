@@ -462,6 +462,22 @@ function honDefaults() {
   const hd = STATE.data.meta?.honDefaults;
   return { bkm2: hd?.bkm2 ?? 2000, honPct: hd?.honPct ?? 4 };
 }
+function actionEnabled() { return !!STATE.data.meta?.actionSignaling; }
+function actionDefaults() {
+  const ad = STATE.data.meta?.actionDefaults;
+  return { matches: ad?.matches ?? 14, verkennend: ad?.verkennend ?? 10, offerte: ad?.offerte ?? 7, actief: ad?.actief ?? 7 };
+}
+function getActionStatus(match) {
+  if (!actionEnabled()) return 'disabled';
+  if (!match.nextAction) return 'none';
+  const now = new Date(); now.setHours(0,0,0,0);
+  const next = new Date(match.nextAction); next.setHours(0,0,0,0);
+  const diffDays = Math.round((next - now) / 86400000);
+  if (diffDays >= 0) return 'ok';
+  const threshold = match.actionThreshold || actionDefaults()[match.stage];
+  if (Math.abs(diffDays) <= threshold) return 'expired';
+  return 'critical';
+}
 function calcHon(md) {
   const ct = md.calcType || 'bvo';
   if (ct === 'units') {
@@ -2018,6 +2034,23 @@ function renderAdminModal(c) {
       <button class="btn btn-black btn-sm" style="margin-top:8px" data-action="saveHonDefaults">Opslaan</button>
     </div>
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:${c.txtPrimary}">Actie-signalering</div>
+        <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+          <input type="checkbox" ${actionEnabled()?'checked':''} onchange="KB.handleAction({target:this,dataset:{action:'toggleActionSignaling'}})" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;border-radius:11px;background:${actionEnabled()?c.groen:c.zachtgrijs};transition:background .2s"></span>
+          <span style="position:absolute;top:2px;left:${actionEnabled()?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+        </label>
+      </div>
+      <div style="font-size:11px;color:${c.grijs};margin-bottom:8px;font-weight:300">Toon klokjes op matchkaarten en waarschuw bij verlopen acties</div>
+      ${actionEnabled() ? `<div style="font-size:11px;color:${c.grijs};margin-bottom:8px;font-weight:300">Na hoeveel dagen wordt het signaal oranje \u2192 rood?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${STAGES.map(s => `<div class="field" style="margin-bottom:0"><label>${esc(s.label)}</label><div style="display:flex;align-items:center;gap:4px"><input type="number" min="1" max="365" value="${d['act_'+s.id]||actionDefaults()[s.id]}" oninput="KB.mf('act_${s.id}',Number(this.value))" style="width:70px"><span style="font-size:12px;color:${c.grijs}">dgn</span></div></div>`).join('')}
+      </div>
+      ${d.actMsg ? `<div style="font-size:11px;margin-top:8px;color:${d.actOk?c.groen:c.rood}">${esc(d.actMsg)}</div>` : ''}
+      <button class="btn btn-black btn-sm" style="margin-top:8px" data-action="saveActionDefaults">Opslaan</button>` : ''}
+    </div>
+    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Database backup</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" data-action="exportBackup">\u2B07 Download backup</button>
@@ -2464,7 +2497,8 @@ function setupEventListeners() {
       case 'showAdmin':
         STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,
           pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,
-          def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false}; STATE.ui.modalExtra = null;
+          def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,
+          act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null;
         renderModal(); break;
       case 'changePassword': {
         (async () => {
@@ -2516,6 +2550,19 @@ function setupEventListeners() {
         fbUpdate('meta/honDefaults', {bkm2:md.def_bkm2||2000,honPct:md.def_honPct||4}).then(() => {
           md.honMsg = 'Opgeslagen! Geldt voor nieuwe matches.'; md.honOk = true; renderModal();
         }).catch(err => { md.honMsg = 'Fout: '+err.message; md.honOk = false; renderModal(); });
+        break;
+      }
+      case 'toggleActionSignaling': {
+        fbUpdate('meta/actionSignaling', !actionEnabled()).then(() => renderModal());
+        break;
+      }
+      case 'saveActionDefaults': {
+        const md = STATE.ui.modalData; if (!md) break;
+        const vals = {};
+        STAGES.forEach(s => { vals[s.id] = md['act_'+s.id] || actionDefaults()[s.id]; });
+        fbUpdate('meta/actionDefaults', vals).then(() => {
+          md.actMsg = 'Opgeslagen!'; md.actOk = true; renderModal();
+        }).catch(err => { md.actMsg = 'Fout: '+err.message; md.actOk = false; renderModal(); });
         break;
       }
       case 'exportBackup':
@@ -2650,7 +2697,7 @@ function setupEventListeners() {
         } else {
           const cnt = objToArr(STATE.data.matches).filter(m => m.stage === stg).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[kansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0});
+          fbPush('matches', {kid:kansId,links:devIds,coals:[],stage:stg,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:stg,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0,nextAction:null,actionThreshold:null});
           STATE.ui.modal = null; renderModal();
         }
         break;
@@ -2664,6 +2711,7 @@ function setupEventListeners() {
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0),
             bkm2: m.bkm2 || 0, honPct: m.honPct || 0,
             calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0,
+            nextAction: m.nextAction || null, actionThreshold: m.actionThreshold || null,
             _calcOpen: !(m.honorarium)
           };
           STATE.ui.modalExtra = null; renderModal();
@@ -2673,7 +2721,7 @@ function setupEventListeners() {
       case 'saveMatch': {
         const md = STATE.ui.modalData; if (!md) break;
         const origM = STATE.data.matches[md.id];
-        const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0,calcType:md.calcType||'bvo',units:md.units||0,pricePerUnit:md.pricePerUnit||0};
+        const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0,calcType:md.calcType||'bvo',units:md.units||0,pricePerUnit:md.pricePerUnit||0,nextAction:md.nextAction||null,actionThreshold:md.actionThreshold||null};
         // StageHistory bijwerken als stage gewijzigd
         if (origM && origM.stage !== md.stage) {
           upd.stageHistory = [...(origM.stageHistory||[]), {stage:md.stage, at:today()}];
@@ -2909,7 +2957,7 @@ function setupEventListeners() {
           // Nieuwe match via + knop met stage gate
           const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
           const _hd = honDefaults(); const _k = STATE.data.kansen[ex.newMatchKansId]; const _bvo = _k?.omvang ? Number(_k.omvang) : 0;
-          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0});
+          fbPush('matches', {kid:ex.newMatchKansId,links:ex.newMatchDevIds||[],coals:[],stage:newStage,notitie:'',col:false,so:cnt,createdAt:today(),updatedAt:today(),stageHistory:[{stage:newStage,at:today()}],ownerId:null,bvo:_bvo,bkm2:_hd.bkm2,honPct:_hd.honPct,honorarium:0,calcType:'bvo',units:0,pricePerUnit:0,nextAction:null,actionThreshold:null});
           STATE.ui.modal = null; renderModal();
         }
         break;
