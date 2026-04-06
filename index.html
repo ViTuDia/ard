@@ -2041,9 +2041,7 @@ function renderAdminModal(c) {
   const fb = STATE.data.meta?.feedback;
   const hasFeedback = fb && Object.keys(fb).length > 0;
   const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
-  const _toggle = (key, on) => `<button type="button" class="btn" style="position:relative;width:40px;height:22px;flex-shrink:0;border:none;background:${on?c.groen:c.zachtgrijs};padding:0;border-radius:11px;min-height:0" data-action="toggleFeature" data-id="${key}">
-    <span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
-  </button>`;
+  const _toggle = (key, on) => `<button class="btn btn-sm" style="font-size:11px;min-width:40px;border:1px solid ${on?c.groen:c.zachtgrijs};background:${on?c.groen:'transparent'};color:${on?'#fff':c.grijs};border-radius:3px;padding:3px 8px;cursor:pointer;font-family:inherit" data-action="toggleFeature" data-id="${key}">${on?'Aan':'Uit'}</button>`;
   return `
     <div style="margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Features</div>
