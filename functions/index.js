@@ -51,11 +51,11 @@ exports.ical = functions.region('europe-west1').https.onRequest(async (req, res)
       const summary = (isOverdue ? '[VERLOPEN] ' : '') + kans.name + ' — opvolgen';
 
       let description = 'Fase: ' + stageLabel;
-      if (devNames) description += '\\nOntwikkelaar(s): ' + devNames;
-      if (m.notitie) description += '\\nNotitie: ' + m.notitie;
+      if (devNames) description += '\nOntwikkelaar(s): ' + devNames;
+      if (m.notitie) description += '\nNotitie: ' + m.notitie;
       if (isOverdue) {
         const days = Math.round((now - nextDate) / 86400000);
-        description += '\\n\\nOriginele datum: ' + fmt(nextDate) + ' (' + days + ' dagen verlopen)';
+        description += '\n\nOriginele datum: ' + fmt(nextDate) + ' (' + days + ' dagen verlopen)';
       }
 
       events.push(vevent(id, dateStr, summary, description, kans.name));
@@ -93,6 +93,14 @@ function fmt(d) {
   return y + m + day;
 }
 
+function nextDay(dateStr) {
+  const y = parseInt(dateStr.slice(0,4));
+  const m = parseInt(dateStr.slice(4,6)) - 1;
+  const d = parseInt(dateStr.slice(6,8));
+  const next = new Date(y, m, d + 1);
+  return fmt(next);
+}
+
 function vevent(uid, dateStr, summary, description, location) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   return [
@@ -100,7 +108,7 @@ function vevent(uid, dateStr, summary, description, location) {
     'UID:' + uid + '@koppelbaas',
     'DTSTAMP:' + stamp,
     'DTSTART;VALUE=DATE:' + dateStr,
-    'DTEND;VALUE=DATE:' + dateStr,
+    'DTEND;VALUE=DATE:' + nextDay(dateStr),
     'SUMMARY:' + esc(summary),
     'DESCRIPTION:' + esc(description),
     'LOCATION:' + esc(location),
