@@ -463,8 +463,8 @@ function honDefaults() {
   return { bkm2: hd?.bkm2 ?? 2000, honPct: hd?.honPct ?? 4 };
 }
 function actionEnabled() { return !!STATE.data.meta?.actionSignaling; }
-function lockEnabled() { return STATE.data.meta?.lockEnabled !== false; }
-function financialEnabled() { return STATE.data.meta?.financialEnabled !== false; }
+function lockEnabled() { return !!STATE.data.meta?.lockEnabled; }
+function financialEnabled() { return !!STATE.data.meta?.financialEnabled; }
 function actionDefaults() {
   const ad = STATE.data.meta?.actionDefaults;
   return { matches: ad?.matches ?? 14, verkennend: ad?.verkennend ?? 10, offerte: ad?.offerte ?? 7, actief: ad?.actief ?? 7 };
@@ -2054,11 +2054,10 @@ function renderAdminModal(c) {
           const on = f.key==='actionSignaling'?actionEnabled():f.key==='lockEnabled'?lockEnabled():financialEnabled();
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
             <div><div style="font-size:12px;font-weight:500;color:${c.txtPrimary}">${f.label}</div><div style="font-size:10px;color:${c.grijs};font-weight:300">${f.desc}</div></div>
-            <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0">
-              <input type="checkbox" ${on?'checked':''} onchange="KB.handleAction({target:this,dataset:{action:'${f.action}'}})" style="opacity:0;width:0;height:0">
+            <div style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0" data-action="${f.action}">
               <span style="position:absolute;inset:0;border-radius:11px;background:${on?c.groen:c.zachtgrijs};transition:background .2s"></span>
               <span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
-            </label>
+            </div>
           </div>`;
         }).join('')}
       </div>
