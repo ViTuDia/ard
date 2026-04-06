@@ -358,13 +358,13 @@
     <!-- Mobiele tab-balk -->
     <div class="mob-tabs" data-noprint>
       <button class="mob-tab active" data-tab="devs" onclick="KB.mobSwitch('devs')">
-        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">DEV</span><span class="mob-tab-label" data-tab-label="devs">Partijen</span>
+        <span class="mob-tab-icon">\uD83E\uDD1D</span><span class="mob-tab-label" data-tab-label="devs">Partijen</span>
       </button>
       <button class="mob-tab" data-tab="kansen" onclick="KB.mobSwitch('kansen')">
-        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">LOC</span><span class="mob-tab-label" data-tab-label="kansen">Locaties</span>
+        <span class="mob-tab-icon">\uD83D\uDCCD</span><span class="mob-tab-label" data-tab-label="kansen">Locaties</span>
       </button>
       <button class="mob-tab" data-tab="pipeline" onclick="KB.mobSwitch('pipeline')">
-        <span class="mob-tab-icon" style="font-size:15px;font-weight:600;letter-spacing:0.5px">FLO</span><span class="mob-tab-label" data-tab-label="pipeline">Pipeline</span>
+        <span class="mob-tab-icon">\uD83D\uDCCB</span><span class="mob-tab-label" data-tab-label="pipeline">Pipeline</span>
       </button>
     </div>
   </div>
@@ -2035,7 +2035,7 @@ function renderAdminModal(c) {
   const fb = STATE.data.meta?.feedback;
   const hasFeedback = fb && Object.keys(fb).length > 0;
   const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
-  const _toggle = (key, on) => `<button class="btn btn-sm" style="font-size:11px;min-width:40px;border:1px solid ${on?c.groen:c.zachtgrijs};background:${on?c.groen:'transparent'};color:${on?'#fff':c.grijs};border-radius:3px;padding:3px 8px;cursor:pointer;font-family:inherit" data-action="toggleFeature" data-id="${key}">${on?'Aan':'Uit'}</button>`;
+  const _toggle = (key, on) => `<button class="btn" style="position:relative;width:40px;height:22px;flex-shrink:0;border:none;background:${on?c.groen:c.zachtgrijs};padding:0;border-radius:11px;min-height:0;cursor:pointer" data-action="toggleFeature" data-id="${key}"><span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none"></span></button>`;
   return `
     <div style="margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Features</div>
