@@ -939,8 +939,9 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
       <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">vrij</div></div>
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
+      <div style="width:12px"></div>
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">${ico('alert',18)}</span> ${al} alert${al!==1?'s':''}</button>
+      ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
       <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">${ico('map',18)}</span></button>
       <div data-noprint style="position:relative">
         <button title="Menu" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleHeaderMenu"><span class="header-icon">${ico('settings',18)}</span></button>
@@ -951,12 +952,6 @@ function renderHeader(c, devs, kansen, matches, alarms) {
             {action:'toggleDark',icon:STATE.ui.dark?ico('sun',16):ico('moon',16),label:STATE.ui.dark?'Licht thema':'Donker thema'},
             {action:'logout',icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',label:'Uitloggen',color:c.rood}
           ].map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${i.color||c.txtPrimary};text-align:left" onmouseover="this.style.background='${c.lichtgrijs}'" onmouseout="this.style.background='none'" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
-          <div style="border-top:1px solid ${c.zachtgrijs};margin:4px 0"></div>
-          <div style="display:flex;align-items:center;gap:6px;padding:6px 14px">
-            <span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0" title="${STATE.ui.connected?'Verbonden':'Offline'}"></span>
-            ${(() => { const _fb=STATE.data.meta?.feedback; const _hf=_fb&&Object.keys(_fb).length>0; const _fbUrl='https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
-              return _hf ? `<a href="${_fbUrl}" target="_blank" rel="noopener" title="Feedback ontvangen"><span class="conn-dot" style="background:${c.rood};margin:0"></span></a>` : ''; })()}
-          </div>
         </div>
       </div>
     </div>
@@ -1378,9 +1373,12 @@ function renderMatchCard(c, match, stage, devs, dts) {
 }
 
 function renderFooter(c) {
+  const _fb = STATE.data.meta?.feedback;
+  const _hf = _fb && Object.keys(_fb).length > 0;
+  const _fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
   return `<div class="footer">
     <span><span style="color:${c.geel};font-weight:500">/ </span>ARD / AtelierRuimDenkers \u2014 De Koppelbaas</span>
-    <span>Willem Buytewechstraat 45, Rotterdam</span>
+    <span style="display:flex;align-items:center;gap:4px">Willem Buytewechstraat 45, Rotterdam <span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0 0 0 6px" title="${STATE.ui.connected?'Verbonden':'Offline'}"></span>${_hf?`<a href="${_fbUrl}" target="_blank" rel="noopener" title="Feedback ontvangen"><span class="conn-dot" style="background:${c.rood};margin:0;cursor:pointer"></span></a>`:''}</span>
   </div>`;
 }
 
