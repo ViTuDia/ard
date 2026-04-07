@@ -539,19 +539,20 @@ function objToArr(obj) {
 }
 function sortedArr(obj) { return objToArr(obj).sort((a,b) => (a.so||0) - (b.so||0)); }
 
+function asArr(v) { return Array.isArray(v) ? v : []; }
 function coalIds(m) {
   const s = new Set();
-  (m.coals||[]).forEach(c => (c||[]).forEach(id => s.add(id)));
+  asArr(m.coals).forEach(c => asArr(c).forEach(id => s.add(id)));
   return s;
 }
 function indivLinks(m) {
   const ci = coalIds(m);
-  return (m.links||[]).filter(id => !ci.has(id));
+  return asArr(m.links).filter(id => !ci.has(id));
 }
-function totalLinks(m) { return indivLinks(m).length + (m.coals||[]).length; }
+function totalLinks(m) { return indivLinks(m).length + asArr(m.coals).length; }
 function matchDevIds(m) {
-  const s = new Set(m.links||[]);
-  (m.coals||[]).forEach(c => (c||[]).forEach(id => s.add(id)));
+  const s = new Set(asArr(m.links));
+  asArr(m.coals).forEach(c => asArr(c).forEach(id => s.add(id)));
   return s;
 }
 function getAlertLevel(m) {
@@ -917,7 +918,7 @@ KB.mobMove = function(matchId, toStage) {
     renderModal();
   } else {
     const cnt = objToArr(STATE.data.matches).filter(x => x.stage === toStage).length;
-    const hist = [...(m.stageHistory||[]), {stage:toStage, at:today()}];
+    const hist = [...(m.stageHistory||[]).slice(-49), {stage:toStage, at:today()}];
     fbUpdate(`matches/${matchId}`, {stage:toStage, so:cnt, stageHistory:hist, updatedAt:today()});
   }
 };
@@ -1329,8 +1330,8 @@ function renderMatchCard(c, match, stage, devs, dts) {
     }
 
     // Coalities
-    (match.coals||[]).forEach((coal, ci) => {
-      const members = (coal||[]).map(id => devs.find(d => d.id === id)).filter(Boolean);
+    asArr(match.coals).forEach((coal, ci) => {
+      const members = asArr(coal).map(id => devs.find(d => d.id === id)).filter(Boolean);
       html += `<div class="coalition" data-action="editCoalition" data-mid="${match.id}" data-cidx="${ci}">`;
       html += `<div style="font-weight:500;color:${c.geel};margin-bottom:4px;display:flex;justify-content:space-between">`;
       html += `<span>Coalitie <span style="font-size:8px;font-weight:300;color:${c.grijs}">(klik om te bewerken)</span></span>`;
@@ -1612,9 +1613,9 @@ function renderCoalitionModal(c) {
   const m = STATE.data.matches[ex.mid];
   const busyIds = new Set();
   if (m) {
-    (m.coals||[]).forEach((coal, ci) => {
+    asArr(m.coals).forEach((coal, ci) => {
       if (ex.editing && ci === ex.cidx) return; // huidige coalitie overslaan bij bewerken
-      (coal||[]).forEach(id => busyIds.add(id));
+      asArr(coal).forEach(id => busyIds.add(id));
     });
   }
   let html = `<div id="modal-scroll-list" style="max-height:250px;overflow-y:auto;border:1px solid ${c.zachtgrijs};border-radius:3px;padding:6px;margin-bottom:14px">`;
@@ -1795,16 +1796,16 @@ function renderFinOverviewModal(c) {
     if (ct === 'bvo') {
       typeLabel = 'BVO';
       const bvo = getVal(m.id,'bvo',m.bvo||0); const bkm2 = getVal(m.id,'bkm2',m.bkm2||0);
-      field1 = `<input type="number" min="0" value="${bvo||''}" ${inp} oninput="KB.finEdit('${m.id}','bvo',this.value)" placeholder="BVO">`;
-      field2 = `<input type="text" inputmode="numeric" data-fmt="eur" value="${bkm2 ? bkm2.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','bkm2',this.value.replace(/\\./g,''))" placeholder="BK/m\u00B2">`;
+      field1 = `<input type="number" min="0" value="${bvo||''}" data-mid="${m.id}" data-fld="bvo" ${inp} oninput="KB.finEdit('${m.id}','bvo',this.value)" placeholder="BVO">`;
+      field2 = `<input type="text" inputmode="numeric" data-fmt="eur" data-mid="${m.id}" data-fld="bkm2" value="${bkm2 ? bkm2.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','bkm2',this.value.replace(/\\./g,''))" placeholder="BK/m\u00B2">`;
     } else if (ct === 'units') {
       typeLabel = 'Units';
       const units = getVal(m.id,'units',m.units||0); const ppu = getVal(m.id,'pricePerUnit',m.pricePerUnit||0);
-      field1 = `<input type="number" min="0" value="${units||''}" ${inp} oninput="KB.finEdit('${m.id}','units',this.value)" placeholder="Aantal">`;
-      field2 = `<input type="text" inputmode="numeric" data-fmt="eur" value="${ppu ? ppu.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','pricePerUnit',this.value.replace(/\\./g,''))" placeholder="\u20AC/unit">`;
+      field1 = `<input type="number" min="0" value="${units||''}" data-mid="${m.id}" data-fld="units" ${inp} oninput="KB.finEdit('${m.id}','units',this.value)" placeholder="Aantal">`;
+      field2 = `<input type="text" inputmode="numeric" data-fmt="eur" data-mid="${m.id}" data-fld="pricePerUnit" value="${ppu ? ppu.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','pricePerUnit',this.value.replace(/\\./g,''))" placeholder="\u20AC/unit">`;
     } else {
       typeLabel = 'Vast';
-      field1 = `<input type="text" inputmode="numeric" data-fmt="eur" value="${hon ? hon.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','honorarium',this.value.replace(/\\./g,''))" placeholder="Honorarium">`;
+      field1 = `<input type="text" inputmode="numeric" data-fmt="eur" data-mid="${m.id}" data-fld="honorarium" value="${hon ? hon.toLocaleString('nl-NL') : ''}" ${inp} oninput="KB.finEdit('${m.id}','honorarium',this.value.replace(/\\./g,''))" placeholder="Honorarium">`;
       field2 = '';
     }
     if (stageChanged) {
@@ -1866,10 +1867,11 @@ KB.finEdit = function(matchId, field, value) {
   // Live visuele feedback: update honorarium + gewogen kolommen
   if (['bvo','bkm2','honPct','units','pricePerUnit'].includes(field)) {
     const ae = document.activeElement;
+    const aMid = ae?.dataset?.mid; const aFld = ae?.dataset?.fld;
     renderModal();
-    if (ae?.dataset) {
-      const inputs = document.querySelectorAll('.modal-body input[type="number"]');
-      for (const inp of inputs) { if (inp.value === ae.value && inp.offsetParent) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e) {} break; } }
+    if (aMid && aFld) {
+      const target = document.querySelector(`.modal-body input[data-mid="${aMid}"][data-fld="${aFld}"]`);
+      if (target) { target.focus(); try { target.setSelectionRange(target.value.length, target.value.length); } catch(e) {} }
     }
   }
 };
@@ -2214,7 +2216,7 @@ KB.exportExcel = function() {
     const rows = [['Kans','Adres','Fase','Ontwikkelaar(s)','BVO','Honorarium','Gewogen','Volgende actie','Notitie','Aangemaakt'].join(sep)];
     matches.forEach(m => {
       const k = kansen[m.kid] || {};
-      const devNames = (m.links||[]).map(did => devs[did]?.name||'?').join(', ');
+      const devNames = asArr(m.links).map(did => devs[did]?.name||'?').join(', ');
       const stg = {matches:'Match',verkennend:'Verkennend',offerte:'Offerte',actief:'Actief'}[m.stage]||m.stage;
       const gw = Math.round((m.honorarium||0) * stagePct(m.stage) / 100);
       const csvVal = v => { const s = String(v==null?'':v).replace(/"/g,'""'); return s.indexOf(sep)>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0 ? '"'+s+'"' : s; };
@@ -2279,8 +2281,10 @@ KB.closeModal = function() {
   if (STATE.ui._mapInstance) { STATE.ui._mapInstance.remove(); STATE.ui._mapInstance = null; }
   const returnMap = STATE.ui._returnToMap;
   const returnAdmin = STATE.ui._returnToAdmin;
+  const returnEditMatch = STATE.ui._returnToEditMatch;
   const _doClose = () => {
-    if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
+    if (returnEditMatch) { STATE.ui._returnToEditMatch = null; STATE.ui.modal = 'editMatch'; STATE.ui.modalData = returnEditMatch; STATE.ui.modalExtra = null; renderModal(); }
+    else if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
     else if (returnAdmin) { STATE.ui._returnToAdmin = false; STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null; renderModal(); }
     else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
   };
@@ -2786,7 +2790,8 @@ function setupEventListeners() {
           });
         }
         STATE.ui.modalDirty = false;
-        if (STATE.ui._returnToMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; renderModal(); initMapModal(); }
+        if (STATE.ui._returnToEditMatch) { const md = STATE.ui._returnToEditMatch; STATE.ui._returnToEditMatch = null; STATE.ui.modal = 'editMatch'; STATE.ui.modalData = md; renderModal(); }
+        else if (STATE.ui._returnToMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; renderModal(); initMapModal(); }
         else { STATE.ui.modal = null; renderModal(); }
         showToast('Opgeslagen'); break;
       }
@@ -2854,12 +2859,12 @@ function setupEventListeners() {
         if (m) {
           const kans = STATE.data.kansen[m.kid];
           STATE.ui.modal = 'editMatch';
-          STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
+          STATE.ui.modalData = {...m, id, links:[...asArr(m.links)], coals:JSON.parse(JSON.stringify(asArr(m.coals))),
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0),
             bkm2: m.bkm2 || 0, honPct: m.honPct || 0,
             calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0,
             nextAction: m.nextAction || null, actionThreshold: m.actionThreshold || null,
-            _calcOpen: !(m.honorarium)
+            _calcOpen: !(m.honorarium), _calcConfirmed: false
           };
           STATE.ui.modalExtra = null; renderModal();
         }
@@ -2871,7 +2876,7 @@ function setupEventListeners() {
         const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0,calcType:md.calcType||'bvo',units:md.units||0,pricePerUnit:md.pricePerUnit||0,nextAction:md.nextAction||null,actionThreshold:md.actionThreshold||null};
         // StageHistory bijwerken als stage gewijzigd
         if (origM && origM.stage !== md.stage) {
-          upd.stageHistory = [...(origM.stageHistory||[]), {stage:md.stage, at:today()}];
+          upd.stageHistory = [...(origM.stageHistory||[]).slice(-49), {stage:md.stage, at:today()}];
           upd.so = objToArr(STATE.data.matches).filter(m => m.stage === md.stage).length;
         }
         fbUpdate(`matches/${md.id}`, upd);
@@ -2890,7 +2895,10 @@ function setupEventListeners() {
         renderModal(); break;
       case 'editKansFromMatch': {
         const k = STATE.data.kansen[id];
-        if (k) { STATE.ui.modal = 'editKans'; STATE.ui.modalData = {...k, id}; STATE.ui.modalExtra = null; renderModal(); }
+        if (k) {
+          STATE.ui._returnToEditMatch = STATE.ui.modalData;
+          STATE.ui.modal = 'editKans'; STATE.ui.modalData = {...k, id}; STATE.ui.modalExtra = null; renderModal();
+        }
         break;
       }
       case 'toggleMatchDev': {
@@ -2926,7 +2934,7 @@ function setupEventListeners() {
         const mid = el.dataset.mid;
         const cidx = parseInt(el.dataset.cidx);
         const m = STATE.data.matches[mid]; if (!m) break;
-        const coal = (m.coals||[])[cidx] || [];
+        const coal = asArr(m.coals)[cidx] || [];
         STATE.ui.modal = 'coalition';
         STATE.ui.modalData = {selectedDevs:[...coal]};
         STATE.ui.modalExtra = {mid, editing:true, cidx};
@@ -2947,7 +2955,7 @@ function setupEventListeners() {
         const {mid, cidx, editing} = STATE.ui.modalExtra;
         const devIds = STATE.ui.modalData.selectedDevs;
         const m = STATE.data.matches[mid]; if (!m) break;
-        const coals = JSON.parse(JSON.stringify(m.coals||[]));
+        const coals = JSON.parse(JSON.stringify(asArr(m.coals)));
         if (editing && cidx !== null) coals[cidx] = devIds; else coals.push(devIds);
         fbUpdate(`matches/${mid}`, {coals, updatedAt:today()});
         STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Coalitie opgeslagen'); break;
@@ -3012,9 +3020,9 @@ function setupEventListeners() {
             fbRemove(`devs/${ex.id}`);
             // Cascade: verwijder uit alle match links en coalities
             objToArr(STATE.data.matches).forEach(m => {
-              const links = (m.links||[]).filter(l => l !== ex.id);
-              const coals = (m.coals||[]).map(c => (c||[]).filter(x => x !== ex.id)).filter(c => c.length > 0);
-              if (links.length !== (m.links||[]).length || coals.length !== (m.coals||[]).length) {
+              const links = asArr(m.links).filter(l => l !== ex.id);
+              const coals = asArr(m.coals).map(c => asArr(c).filter(x => x !== ex.id)).filter(c => c.length > 0);
+              if (links.length !== asArr(m.links).length || coals.length !== asArr(m.coals).length) {
                 fbUpdate(`matches/${m.id}`, {links, coals, updatedAt:today()});
               }
             });
@@ -3033,13 +3041,13 @@ function setupEventListeners() {
           }
           case 'unlinkDev': {
             const m = STATE.data.matches[ex.mid]; if (!m) break;
-            const links = (m.links||[]).filter(l => l !== ex.did);
+            const links = asArr(m.links).filter(l => l !== ex.did);
             fbUpdate(`matches/${ex.mid}`, {links, updatedAt:today()});
             break;
           }
           case 'coalition': {
             const m = STATE.data.matches[ex.mid]; if (!m) break;
-            const coals = JSON.parse(JSON.stringify(m.coals||[]));
+            const coals = JSON.parse(JSON.stringify(asArr(m.coals)));
             coals.splice(ex.cidx, 1);
             fbUpdate(`matches/${ex.mid}`, {coals, updatedAt:today()});
             break;
@@ -3064,7 +3072,7 @@ function setupEventListeners() {
         const m = STATE.data.matches[id];
         if (m) {
           const kans = STATE.data.kansen[m.kid];
-          STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
+          STATE.ui.modal = 'editMatch'; STATE.ui.modalData = {...m, id, links:[...asArr(m.links)], coals:JSON.parse(JSON.stringify(asArr(m.coals))),
             bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0, calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0, _calcOpen: !(m.honorarium)
           }; STATE.ui.modalExtra = null; renderModal();
         }
@@ -3084,7 +3092,7 @@ function setupEventListeners() {
           if (m) {
             const kans = STATE.data.kansen[m.kid];
             STATE.ui.modal = 'editMatch';
-            STATE.ui.modalData = {...m, id:mid, stage:newStage, links:[...(m.links||[])], coals:JSON.parse(JSON.stringify(m.coals||[])),
+            STATE.ui.modalData = {...m, id:mid, stage:newStage, links:[...asArr(m.links)], coals:JSON.parse(JSON.stringify(asArr(m.coals))),
               bvo: m.bvo || (kans?.omvang ? Number(kans.omvang) : 0), bkm2: m.bkm2 || 0, honPct: m.honPct || 0,
               calcType: m.calcType || 'bvo', units: m.units || 0, pricePerUnit: m.pricePerUnit || 0, _calcOpen: !(m.honorarium)
             };
@@ -3096,7 +3104,7 @@ function setupEventListeners() {
           const m = STATE.data.matches[ex.dragMatchId];
           if (m) {
             const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
-            const hist = [...(m.stageHistory||[]), {stage:newStage, at:today()}];
+            const hist = [...(m.stageHistory||[]).slice(-49), {stage:newStage, at:today()}];
             fbUpdate(`matches/${ex.dragMatchId}`, {stage:newStage, so:cnt, stageHistory:hist, updatedAt:today()});
           }
           STATE.ui.modal = null; renderModal();
@@ -3575,7 +3583,7 @@ function setupEventListeners() {
           renderModal();
         } else {
           const cnt = objToArr(STATE.data.matches).filter(x => x.stage === newStage).length;
-          const hist = [...(m.stageHistory||[]), {stage:newStage, at:today()}];
+          const hist = [...(m.stageHistory||[]).slice(-49), {stage:newStage, at:today()}];
           fbUpdate(`matches/${data.id}`, {stage:newStage, so:cnt, stageHistory:hist, updatedAt:today()});
         }
       }
