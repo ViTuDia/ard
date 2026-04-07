@@ -1423,7 +1423,13 @@ function renderModal() {
   html += `<div class="modal-head"><h3>${title}</h3><button class="btn-icon" style="font-size:18px" data-action="closeModal">\u2715</button></div>`;
   html += `<div class="modal-body">${body}</div>`;
   html += '</div></div>';
+  // Bewaar scroll-posities voor re-render
+  const _mb = mc.querySelector('.modal-body'); const _mbSt = _mb ? _mb.scrollTop : 0;
+  const _sl = mc.querySelector('#modal-scroll-list'); const _slSt = _sl ? _sl.scrollTop : 0;
   mc.innerHTML = html;
+  // Herstel scroll-posities na re-render
+  const _mb2 = mc.querySelector('.modal-body'); if (_mb2 && _mbSt) _mb2.scrollTop = _mbSt;
+  const _sl2 = mc.querySelector('#modal-scroll-list'); if (_sl2 && _slSt) _sl2.scrollTop = _slSt;
 }
 
 function renderEditDevModal(c) {
