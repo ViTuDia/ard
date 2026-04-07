@@ -941,10 +941,24 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
       ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">${ico('alert',18)}</span> ${al} alert${al!==1?'s':''}</button>
-      <button data-noprint title="${STATE.ui.dark?'Licht thema':'Donker thema'}" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleDark"><span class="header-icon">${STATE.ui.dark?ico('sun',18):ico('moon',18)}</span></button>
-      <button data-noprint title="Print het board" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="print"><span class="header-icon">${ico('printer',18)}</span></button>
       <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">${ico('map',18)}</span></button>
-      <button data-noprint title="Admin & help" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showAdmin"><span class="header-icon">${ico('settings',18)}</span></button>
+      <div data-noprint style="position:relative">
+        <button title="Menu" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleHeaderMenu"><span class="header-icon">${ico('settings',18)}</span></button>
+        <div class="header-menu" style="display:${STATE.ui.headerMenu?'block':'none'};position:absolute;right:0;top:100%;margin-top:4px;background:${c.kaart};border:1px solid ${c.zachtgrijs};border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:200px;z-index:500;padding:4px 0">
+          ${[
+            {action:'showAdmin',icon:ico('settings',16),label:'Instellingen'},
+            {action:'print',icon:ico('printer',16),label:'Printen'},
+            {action:'toggleDark',icon:STATE.ui.dark?ico('sun',16):ico('moon',16),label:STATE.ui.dark?'Licht thema':'Donker thema'},
+            {action:'logout',icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',label:'Uitloggen'}
+          ].map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${i.action==='logout'?c.rood:c.txtPrimary};text-align:left" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
+          <div style="border-top:1px solid ${c.zachtgrijs};margin:4px 0"></div>
+          ${(() => { const _fb=STATE.data.meta?.feedback; const _hf=_fb&&Object.keys(_fb).length>0; return `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:11px;color:${c.grijs};font-weight:300">
+            <span style="display:flex;align-items:center;gap:5px"><span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0"></span>${STATE.ui.connected?'Verbonden':'Offline'}</span>
+            ${_hf?`<span style="display:flex;align-items:center;gap:5px"><span class="conn-dot" style="background:${c.rood};margin:0"></span>Feedback</span>`:''}
+          </div>`; })()}
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -1274,16 +1288,10 @@ function renderMatchCard(c, match, stage, devs, dts) {
   html += `<span class="stage-badge" style="flex-shrink:0;color:${sc};background:${sb};border:1px solid ${sc}33;font-size:9px;padding:2px 6px">${esc(stage.short)}</span>`;
   html += '</div>';
 
-  // BVO (altijd zichtbaar als uitgeklapt, direct onder titel)
-  if (!isC && kans.omvang) {
-    html += `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">`;
-    html += `<span style="font-size:10px;color:${c.grijs};font-weight:300">BVO ${esc(kans.omvang)}m\u00B2</span>`;
-    html += '</div>';
-  }
-
   // Uitgeklapte inhoud
   if (!isC) {
-    html += `<div style="font-size:11px;color:${c.grijs};margin-top:3px;font-weight:300">${esc(kans.type||'')}</div>`;
+    const _bvoType = [kans.omvang ? `BVO ${esc(kans.omvang)}m\u00B2` : '', esc(kans.type||'')].filter(Boolean).join(' \u2014 ');
+    if (_bvoType) html += `<div style="font-size:11px;color:${c.grijs};margin-top:3px;font-weight:300">${_bvoType}</div>`;
     if (kans.adres) {
       html += '<div style="font-size:11px;margin-top:2px;font-weight:300">';
       if (mp) html += `<a href="${mp}" target="_blank" rel="noopener noreferrer" style="color:${c.blauw};text-decoration:none">${ico('mapPin',12)} ${esc(kans.adres)}</a>`;
@@ -2524,6 +2532,9 @@ function setupEventListeners() {
     const id = el.dataset.id;
     e.stopPropagation();
 
+    // Sluit header-menu bij klik op iets anders dan het menu zelf
+    if (STATE.ui.headerMenu && action !== 'toggleHeaderMenu') { STATE.ui.headerMenu = false; render(); }
+
     switch(action) {
       // Selectie
       case 'selectDev':
@@ -2595,11 +2606,13 @@ function setupEventListeners() {
       }
 
       // Header
+      case 'toggleHeaderMenu':
+        STATE.ui.headerMenu = !STATE.ui.headerMenu; render(); break;
       case 'toggleDark':
-        STATE.ui.dark = !STATE.ui.dark;
+        STATE.ui.dark = !STATE.ui.dark; STATE.ui.headerMenu = false;
         localStorage.setItem('kb_dark', STATE.ui.dark ? '1' : '0');
         applyTheme(); render(); break;
-      case 'print': window.print(); break;
+      case 'print': STATE.ui.headerMenu = false; render(); setTimeout(()=>window.print(),100); break;
       case 'showAlerts':
         STATE.ui.modal = 'alerts'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         renderModal(); break;
@@ -2620,6 +2633,7 @@ function setupEventListeners() {
         renderModal(); break;
       }
       case 'showAdmin':
+        STATE.ui.headerMenu = false;
         STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,
           pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,
           def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,
