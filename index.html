@@ -949,14 +949,9 @@ function renderHeader(c, devs, kansen, matches, alarms) {
             {action:'showAdmin',icon:ico('settings',16),label:'Instellingen'},
             {action:'print',icon:ico('printer',16),label:'Printen'},
             {action:'toggleDark',icon:STATE.ui.dark?ico('sun',16):ico('moon',16),label:STATE.ui.dark?'Licht thema':'Donker thema'},
-            {action:'logout',icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',label:'Uitloggen'}
-          ].map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${i.action==='logout'?c.rood:c.txtPrimary};text-align:left" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
-          <div style="border-top:1px solid ${c.zachtgrijs};margin:4px 0"></div>
-          ${(() => { const _fb=STATE.data.meta?.feedback; const _hf=_fb&&Object.keys(_fb).length>0; return `
-          <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:11px;color:${c.grijs};font-weight:300">
-            <span style="display:flex;align-items:center;gap:5px"><span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0"></span>${STATE.ui.connected?'Verbonden':'Offline'}</span>
-            ${_hf?`<span style="display:flex;align-items:center;gap:5px"><span class="conn-dot" style="background:${c.rood};margin:0"></span>Feedback</span>`:''}
-          </div>`; })()}
+          ].map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${c.txtPrimary};text-align:left" onmouseover="this.style.background='${c.lichtgrijs}'" onmouseout="this.style.background='none'" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
+          ${(() => { const _fb=STATE.data.meta?.feedback; const _hf=_fb&&Object.keys(_fb).length>0; const _fbUrl='https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
+            return _hf ? `<div style="border-top:1px solid ${c.zachtgrijs};margin:4px 0"></div><a href="${_fbUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;text-decoration:none;font-size:12px;font-family:inherit;color:${c.rood}" onmouseover="this.style.background='${c.lichtgrijs}'" onmouseout="this.style.background='none'"><span class="conn-dot" style="background:${c.rood};margin:0"></span><span>Feedback ontvangen</span></a>` : ''; })()}
         </div>
       </div>
     </div>
@@ -2066,9 +2061,6 @@ function renderAdminModal(c) {
   const pwOk = d.pwOk || false;
   const bkMsg = d.bkMsg || '';
   const bkOk = d.bkOk || false;
-  const fb = STATE.data.meta?.feedback;
-  const hasFeedback = fb && Object.keys(fb).length > 0;
-  const fbUrl = 'https://console.firebase.google.com/project/atelierruimdenkers-d47d6/database/atelierruimdenkers-d47d6-default-rtdb/data/~2Fmeta~2Ffeedback';
   const _toggle = (key, on) => `<button class="btn" style="position:relative;width:40px;height:22px;flex-shrink:0;border:none;background:${on?c.groen:c.zachtgrijs};padding:0;border-radius:11px;min-height:0;cursor:pointer" data-action="toggleFeature" data-id="${key}"><span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none"></span></button>`;
   return `
     <div style="margin-bottom:20px">
@@ -2116,15 +2108,18 @@ function renderAdminModal(c) {
       ${d.actMsg ? `<div style="font-size:11px;margin-top:8px;color:${d.actOk?c.groen:c.rood}">${esc(d.actMsg)}</div>` : ''}
       <button class="btn btn-black btn-sm" style="margin-top:8px" data-action="saveActionDefaults">Opslaan</button>
     </div>
+    ${(() => { const _icalToken = STATE.data.meta?.icalToken; const _icalUrl = _icalToken ? 'https://europe-west1-atelierruimdenkers-d47d6.cloudfunctions.net/ical?token='+encodeURIComponent(_icalToken) : ''; return `
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px;${actionEnabled()?'':'display:none'}">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Agenda-feed</div>
       <div style="font-size:11px;color:${c.grijs};margin-bottom:8px;font-weight:300">Abonneer je agenda op de iCal feed om matches met geplande acties te zien.</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="text" readonly value="https://europe-west1-atelierruimdenkers-d47d6.cloudfunctions.net/ical" style="flex:1;min-width:200px;padding:6px 8px;font-size:11px;border:1px solid ${c.zachtgrijs};border-radius:3px;background:${c.lichtgrijs};color:${c.txtPrimary};font-family:monospace" onclick="this.select()">
-        <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" onclick="navigator.clipboard.writeText('https://europe-west1-atelierruimdenkers-d47d6.cloudfunctions.net/ical').then(()=>KB.showToast('URL gekopieerd'))">Kopieer</button>
+      ${_icalToken ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" readonly value="${esc(_icalUrl)}" style="flex:1;min-width:200px;padding:6px 8px;font-size:11px;border:1px solid ${c.zachtgrijs};border-radius:3px;background:${c.lichtgrijs};color:${c.txtPrimary};font-family:monospace" onclick="this.select()">
+        <button class="btn btn-grey btn-sm" style="border:1px solid ${c.zachtgrijs}" onclick="navigator.clipboard.writeText('${esc(_icalUrl)}').then(()=>KB.showToast('URL gekopieerd'))">Kopieer</button>
       </div>
-      <div style="font-size:10px;color:${c.grijs};margin-top:6px;font-weight:300">Plak deze URL in Google Calendar (Andere agenda \u2192 Via URL) of Apple Calendar (Abonneer).</div>
-    </div>
+      <div style="font-size:10px;color:${c.grijs};margin-top:6px;font-weight:300">Plak deze URL in Google Calendar (Andere agenda \u2192 Via URL) of Apple Calendar (Abonneer).</div>` :
+      `<button class="btn btn-black btn-sm" data-action="generateIcalToken">Genereer feed-URL</button>
+      <div style="font-size:10px;color:${c.grijs};margin-top:6px;font-weight:300">Eenmalig een beveiligde URL genereren voor je agenda.</div>`}
+    </div>`; })()}
     <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Backup & export</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2158,15 +2153,7 @@ function renderAdminModal(c) {
       ${pwMsg ? `<div style="font-size:11px;margin-bottom:8px;color:${pwOk?c.groen:c.rood}">${esc(pwMsg)}</div>` : ''}
       <button class="btn btn-black btn-sm" style="margin-top:4px" data-action="changePassword">Wijzig wachtwoord</button>
     </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:12px;font-size:11px;font-weight:300;color:${c.grijs}">
-          <span style="display:flex;align-items:center;gap:4px"><span class="conn-dot" style="background:${STATE.ui.connected?'#007b2f':'#c22d0b'};margin:0"></span>${STATE.ui.connected?'Verbonden':'Offline'}</span>
-          ${hasFeedback?`<a href="${fbUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;color:${c.rood};text-decoration:none"><span class="conn-dot" style="background:${c.rood};margin:0"></span>Feedback</a>`:''}
-        </div>
-        <button class="btn btn-sm" style="font-size:11px;color:${c.rood};background:none;border:1px solid ${c.rood}22" data-action="logout">Uitloggen</button>
-      </div>
-    </div>`;
+    `;
 }
 
 // ─── FEATURE TOGGLES ────────────────────────────
@@ -2180,13 +2167,15 @@ KB.toggleFeature = function(key) {
 KB.exportBackup = async function() {
   const md = STATE.ui.modalData;
   try {
-    // Lees ook meta (bevat passwordHash)
+    // Lees ook meta, maar sluit passwordHash uit
     const metaSnap = await db.ref('meta').once('value');
+    const metaVal = metaSnap.val() || {};
+    delete metaVal.passwordHash;
     const backup = {
       _version: 1,
       _date: new Date().toISOString(),
       _app: 'De Koppelbaas',
-      meta: metaSnap.val() || {},
+      meta: metaVal,
       devTypes: STATE.data.devTypes,
       kansCats: STATE.data.kansCats,
       devs: STATE.data.devs,
@@ -2701,6 +2690,11 @@ function setupEventListeners() {
       }
       case 'toggleFinancial': {
         fbUpdate('meta/financialEnabled', !financialEnabled()).then(() => { renderModal(); render(); });
+        break;
+      }
+      case 'generateIcalToken': {
+        const token = crypto.randomUUID();
+        fbSet('meta/icalToken', token).then(() => { renderModal(); showToast('Feed-URL gegenereerd'); });
         break;
       }
       case 'saveActionDefaults': {

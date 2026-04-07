@@ -6,6 +6,14 @@ const db = admin.database();
 
 exports.ical = functions.region('europe-west1').https.onRequest(async (req, res) => {
   try {
+    // Token-beveiliging: vergelijk met opgeslagen token in meta/icalToken
+    const tokenSnap = await db.ref('meta/icalToken').once('value');
+    const storedToken = tokenSnap.val();
+    if (!storedToken || req.query.token !== storedToken) {
+      res.status(403).send('Forbidden');
+      return;
+    }
+
     const [matchesSnap, kansenSnap, devsSnap] = await Promise.all([
       db.ref('matches').once('value'),
       db.ref('kansen').once('value'),
