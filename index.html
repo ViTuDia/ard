@@ -54,7 +54,7 @@
     .header-div { width: 1px; height: 32px; background: var(--headerDiv); }
     .header-title-label { font-size: 9px; font-weight: 300; letter-spacing: 2px; color: var(--headerSub); text-transform: uppercase; }
     .header-title-name { font-size: 20px; font-weight: 300; margin-top: 2px; }
-    .header-right { display: flex; gap: 16px; align-items: center; }
+    .header-right { display: flex; gap: 6px; align-items: center; }
     .header-stat { text-align: center; }
     .header-stat-val { font-size: 20px; font-weight: 500; }
     .header-stat-lbl { font-size: 8px; color: var(--headerSub); letter-spacing: 1px; text-transform: uppercase; font-weight: 300; }
@@ -113,7 +113,7 @@
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--grijs); font-family: inherit; padding: 2px 4px; transition: color 0.15s; }
     .btn-icon:hover { color: var(--geel); }
     .header-btn { color: #fff; font-size: 12px; padding: 6px 12px; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.15s; }
-    .header-btn:hover { opacity: 0.85; }
+    .header-btn:hover { opacity: 0.75; background: #555 !important; }
     .header-btn-icon { width: 36px; padding: 0; }
     .header-icon { font-size: 18px; line-height: 1; }
     .btn-add-col { width: 100%; padding: 9px; background: transparent; border: 2px dashed var(--zachtgrijs); border-radius: 4px; cursor: pointer; color: var(--grijs); font-size: 11px; font-family: inherit; margin-top: 4px; }
@@ -415,7 +415,7 @@ alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 
 lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 lockOpen:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
 clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-banknote:'<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+banknote:'<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor" stroke="none">\u20AC</text>',
 pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
 mapPin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
 user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -1191,7 +1191,8 @@ function renderPipeline(c, matches, kansen, devs, dts) {
         const pct = stagePct(stage.id);
         const gw = Math.round(rawH * pct / 100);
         if (!rawH) return `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">${minTxt}</div>`;
-        return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px">
+        return `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">${minTxt}</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px">
           <div style="font-size:11px;color:${c.grijs};font-weight:300">${fmtEuro(rawH)} honorarium</div>
           <div style="display:flex;align-items:baseline;gap:4px">
             <span style="font-size:10px;color:${c.grijs};font-weight:300">${pct}% \u2192</span>
@@ -1258,7 +1259,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
   html += `<span style="font-size:14px;color:${c.grijs};flex-shrink:0;padding:2px 4px" data-action="toggleMatchCollapse" data-id="${match.id}">${isC?'\u25B8':'\u25BE'}</span>`;
   html += `<span style="font-weight:500;font-size:14px;line-height:1.3;flex:1;min-width:0">${esc(kans.name)}</span>`;
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0">(${tl})</span>`;
-  if (lockEnabled() && match.locked) html += `<span style="flex-shrink:0;opacity:0.5;color:${c.grijs}" title="Vergrendeld">${ico('lock',13)}</span>`;
+  if (lockEnabled() && match.locked) html += `<span style="flex-shrink:0;opacity:0.5;color:${c.grijs}" title="Vergrendeld">${ico('lock',16)}</span>`;
   { const _as = getActionStatus(match);
     if (_as !== 'disabled') {
       const _acCol = {none:c.grijs,ok:c.groen,expired:'#e67e22',critical:c.rood}[_as]||c.grijs;
@@ -1266,11 +1267,11 @@ function renderMatchCard(c, match, stage, devs, dts) {
       let _acTt = 'Geen volgende actie gepland';
       if (match.nextAction) { const _n2=new Date();_n2.setHours(0,0,0,0);const _nx=new Date(match.nextAction);_nx.setHours(0,0,0,0);const _df=Math.round((_nx-_n2)/86400000);
         _acTt=_df>=0?'Volgende actie: '+_nx.toLocaleDateString('nl-NL'):'Actie verlopen: '+Math.abs(_df)+' dag'+(Math.abs(_df)!==1?'en':'')+' geleden'; }
-      html += `<span style="flex-shrink:0;opacity:${_acOp};color:${_acCol}" title="${esc(_acTt)}">${ico('clock',13)}</span>`;
+      html += `<span style="flex-shrink:0;opacity:${_acOp};color:${_acCol}" title="${esc(_acTt)}">${ico('clock',15)}</span>`;
     }
   }
-  if (financialEnabled() && !match.honorarium) html += `<span style="flex-shrink:0;position:relative;opacity:0.6" title="Geen honorarium ingevuld">${ico('banknote',13)}<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span></span>`;
-  html += `<span class="stage-badge" style="flex-shrink:0;color:${sc};background:${sb};border:1px solid ${sc}33;font-size:8px;padding:1px 5px">${esc(stage.short)}</span>`;
+  if (financialEnabled() && !match.honorarium) html += `<span style="flex-shrink:0;position:relative;opacity:0.6" title="Geen honorarium ingevuld">${ico('banknote',15)}<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span></span>`;
+  html += `<span class="stage-badge" style="flex-shrink:0;color:${sc};background:${sb};border:1px solid ${sc}33;font-size:9px;padding:2px 6px">${esc(stage.short)}</span>`;
   html += '</div>';
 
   // BVO (altijd zichtbaar als uitgeklapt, direct onder titel)
