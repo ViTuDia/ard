@@ -953,6 +953,7 @@ function renderHeader(c, devs, kansen, matches, alarms) {
     <div class="header-right">
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">${ico('alert',18)}</span> ${al} alert${al!==1?'s':''}</button>
       ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
+      ${actionEnabled() ? `<button data-noprint title="Afspraken-overzicht" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showActionOverview"><span class="header-icon">${ico('clock',18)}</span></button>` : ''}
       <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">${ico('map',18)}</span></button>
       <div data-noprint style="position:relative">
         <button title="Menu" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleHeaderMenu"><span class="header-icon">${ico('settings',18)}</span></button>
@@ -1284,11 +1285,11 @@ function renderMatchCard(c, match, stage, devs, dts) {
       let _acTt = 'Geen volgende actie gepland';
       if (match.nextAction) { const _n2=new Date();_n2.setHours(0,0,0,0);const _nx=new Date(match.nextAction);_nx.setHours(0,0,0,0);const _df=Math.round((_nx-_n2)/86400000);
         _acTt=_df>=0?'Volgende actie: '+_nx.toLocaleDateString('nl-NL'):'Actie verlopen: '+Math.abs(_df)+' dag'+(Math.abs(_df)!==1?'en':'')+' geleden'; }
-      html += `<span style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:${_acCol};opacity:${_as==='none'?'0.3':'0.85'}" title="${esc(_acTt)}"></span>`;
+      html += `<span style="flex-shrink:0;width:12px;height:12px;border-radius:50%;background:${_acCol};opacity:${_as==='none'?'0.3':'0.85'}" title="${esc(_acTt)}"></span>`;
     }
   }
   if (financialEnabled()) {
-    html += `<span style="flex-shrink:0;position:relative;opacity:${match.honorarium?'0.8':'0.35'};color:${match.honorarium?sc:c.grijs}" title="${match.honorarium?fmtEuro(match.honorarium):'Geen honorarium ingevuld'}">${ico('banknote',15)}${!match.honorarium?`<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span>`:''}</span>`;
+    html += `<span style="flex-shrink:0;position:relative;opacity:${match.honorarium?'0.8':'0.35'};color:${match.honorarium?sc:c.grijs};display:inline-flex;align-items:center" title="${match.honorarium?fmtEuro(match.honorarium):'Geen honorarium ingevuld'}">${ico('banknote',18)}${!match.honorarium?`<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span>`:''}</span>`;
   }
   html += `<span class="stage-badge" style="flex-shrink:0;color:${sc};background:${sb};border:1px solid ${sc}33;font-size:9px;padding:2px 6px">${esc(stage.short)}</span>`;
   html += '</div>';
@@ -1421,6 +1422,7 @@ function renderModal() {
     case 'admin': { w=440; title=ico('settings',16)+' Instellingen'; body = renderAdminModal(c); break; }
     case 'help': { w=540; title='? Help'; body = renderHelpModal(c); break; }
     case 'finOverview': { w=700; title=ico('banknote',16)+' Financieel overzicht'; body = renderFinOverviewModal(c); break; }
+    case 'actionOverview': { w=700; title='Afspraken-overzicht'; body = renderActionOverviewModal(c); break; }
     case 'map': { w=800; title=ico('map',16)+' Kaart'; body = renderMapModal(c); break; }
     case 'sysConfirm': {
       w=380; title='Bevestigen';
@@ -1842,6 +1844,80 @@ function renderFinOverviewModal(c) {
   html += '</tbody></table></div>';
   return html;
 }
+function renderActionOverviewModal(c) {
+  const allMatches = objToArr(STATE.data.matches).sort((a,b) => {
+    const si = s => ({matches:0,verkennend:1,offerte:2,actief:3}[s]||0);
+    return si(a.stage) - si(b.stage) || (a.so||0) - (b.so||0);
+  });
+  // Alle kansen zonder match
+  const matchedKids = new Set(allMatches.map(m => m.kid));
+  const unmatchedK = sortedArr(STATE.data.kansen).filter(k => !matchedKids.has(k.id));
+  const today2 = new Date(); today2.setHours(0,0,0,0);
+  const inp = `style="width:100%;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
+  let html = `<div style="font-size:11px;color:${c.grijs};margin-bottom:10px;font-weight:300">Plan en bewerk afspraken per match. Wijzigingen worden direct opgeslagen.</div>`;
+  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
+  html += `<thead><tr style="border-bottom:2px solid ${c.zachtgrijs};text-align:left">
+    <th style="padding:6px 4px;font-weight:600;min-width:120px">Kans</th>
+    <th style="padding:6px 4px;font-weight:600;text-align:center">Fase</th>
+    <th style="padding:6px 4px;font-weight:600;text-align:center;min-width:50px">Status</th>
+    <th style="padding:6px 4px;font-weight:600;min-width:110px">Volgende actie</th>
+    <th style="padding:6px 4px;font-weight:600;min-width:55px">Drempel</th>
+    <th style="padding:6px 4px;font-weight:600;min-width:120px">Notitie</th>
+  </tr></thead><tbody>`;
+  let prevStage = '';
+  let planned = 0, expired = 0, noPlan = 0;
+  allMatches.forEach(m => {
+    const kans = STATE.data.kansen[m.kid]; if (!kans) return;
+    const sc = stageColor(m.stage);
+    const stage = STAGES.find(s => s.id === m.stage);
+    const stageChanged = m.stage !== prevStage;
+    prevStage = m.stage;
+    const defTh = actionDefaults()[m.stage] || 7;
+    // Status berekenen
+    let statusDot = '', statusTxt = '';
+    if (m.nextAction) {
+      const nx = new Date(m.nextAction); nx.setHours(0,0,0,0);
+      const df = Math.round((nx - today2) / 86400000);
+      if (df < 0) { statusDot = c.rood; statusTxt = Math.abs(df) + 'd verlopen'; expired++; }
+      else if (df === 0) { statusDot = '#e67e22'; statusTxt = 'Vandaag'; planned++; }
+      else { statusDot = c.groen; statusTxt = df + 'd'; planned++; }
+    } else { statusDot = c.grijs; statusTxt = 'Geen'; noPlan++; }
+    if (stageChanged) {
+      const stageCnt = allMatches.filter(x => x.stage === m.stage && STATE.data.kansen[x.kid]).length;
+      html += `<tr><td colspan="6" style="padding:8px 4px 4px;font-size:12px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
+    }
+    html += `<tr style="border-bottom:1px solid ${c.zachtgrijs}22">
+      <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
+      <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
+      <td style="padding:5px 4px;text-align:center"><span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block"></span><span style="font-size:10px;color:${statusDot=== c.grijs?c.grijs:statusDot};font-weight:500">${statusTxt}</span></span></td>
+      <td style="padding:2px 1px"><input type="date" data-act-mid="${m.id}" data-act-fld="nextAction" value="${m.nextAction||''}" ${inp} onchange="KB.actEdit('${m.id}','nextAction',this.value||null)"></td>
+      <td style="padding:2px 1px"><input type="number" min="1" max="365" data-act-mid="${m.id}" data-act-fld="actionThreshold" value="${m.actionThreshold||''}" placeholder="${defTh}" ${inp} onchange="KB.actEdit('${m.id}','actionThreshold',this.value?Number(this.value):null)"></td>
+      <td style="padding:2px 1px"><input type="text" data-act-mid="${m.id}" data-act-fld="notitie" value="${esc(m.notitie||'')}" ${inp} onchange="KB.actEdit('${m.id}','notitie',this.value)"></td>
+    </tr>`;
+  });
+  // Ongematchte kansen
+  if (unmatchedK.length > 0) {
+    html += `<tr><td colspan="6" style="padding:8px 4px 4px;font-size:12px;font-weight:600;color:${c.grijs};background:${c.lichtgrijs};border-bottom:1px solid ${c.zachtgrijs}">Ongematchte kansen (${unmatchedK.length})</td></tr>`;
+    unmatchedK.forEach(k => {
+      html += `<tr style="border-bottom:1px solid ${c.zachtgrijs}22">
+        <td style="padding:5px 4px;font-weight:400;color:${c.grijs}">${esc(k.name)}</td>
+        <td style="padding:5px 4px;text-align:center"><span style="font-size:9px;color:${c.rood}">Vrij</span></td>
+        <td colspan="4" style="padding:5px 4px;font-size:10px;color:${c.grijs};font-style:italic">Nog geen koppeling</td>
+      </tr>`;
+    });
+  }
+  html += '</tbody></table></div>';
+  html += `<div style="margin-top:10px;font-size:11px;color:${c.grijs};font-weight:300;display:flex;gap:16px;flex-wrap:wrap">`;
+  html += `<span><span style="color:${c.groen}">\u25CF</span> ${planned} gepland</span>`;
+  html += `<span><span style="color:${c.rood}">\u25CF</span> ${expired} verlopen</span>`;
+  html += `<span><span style="color:${c.grijs}">\u25CF</span> ${noPlan} zonder actie</span>`;
+  html += '</div>';
+  return html;
+}
+KB.actEdit = function(matchId, field, value) {
+  const upd = {}; upd[field] = value; upd.updatedAt = today();
+  fbUpdate(`matches/${matchId}`, upd);
+};
 KB.finEditType = function(matchId, value) {
   const md = STATE.ui.modalData; if (!md) return;
   if (!md.finEdits) md.finEdits = {};
@@ -2382,7 +2458,7 @@ KB.mfCalcBlur = function(field) {
 KB.mf = function(field, value) {
   if (STATE.ui.modalData) {
     STATE.ui.modalData[field] = value;
-    if (!['admin','help','finOverview','map','sysConfirm'].includes(STATE.ui.modal)) STATE.ui.modalDirty = true;
+    if (!['admin','help','finOverview','actionOverview','map','sysConfirm'].includes(STATE.ui.modal)) STATE.ui.modalDirty = true;
     // Herrender modal alleen als het een veld is dat de knop-status beïnvloedt
     if (['label','short','checked'].includes(field)) {
       // Bewaar actief element + cursor positie voor focus-herstel
@@ -2647,6 +2723,9 @@ function setupEventListeners() {
         renderModal(); break;
       case 'showFinOverview':
         STATE.ui.modal = 'finOverview'; STATE.ui.modalData = {finEdits:{}}; STATE.ui.modalExtra = null;
+        renderModal(); break;
+      case 'showActionOverview':
+        STATE.ui.modal = 'actionOverview'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
         renderModal(); break;
       case 'showMap':
         STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
