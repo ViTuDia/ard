@@ -1876,7 +1876,9 @@ function renderActionOverviewModal(c) {
     if (m.nextAction) {
       const nx = new Date(m.nextAction); nx.setHours(0,0,0,0);
       const df = Math.round((nx - today2) / 86400000);
-      if (df < 0) { statusDot = c.rood; statusTxt = Math.abs(df) + 'd verlopen'; expired++; }
+      const th = m.actionThreshold || defTh;
+      if (df < 0 && Math.abs(df) > th) { statusDot = c.rood; statusTxt = Math.abs(df) + 'd verlopen'; expired++; }
+      else if (df < 0) { statusDot = '#e67e22'; statusTxt = Math.abs(df) + 'd verlopen'; expired++; }
       else if (df === 0) { statusDot = '#e67e22'; statusTxt = 'Vandaag'; planned++; }
       else { statusDot = c.groen; statusTxt = df + 'd'; planned++; }
     } else { statusDot = c.grijs; statusTxt = 'Geen'; noPlan++; }
