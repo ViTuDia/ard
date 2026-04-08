@@ -112,6 +112,7 @@
     .btn-match { color: var(--geel); background: rgba(217,163,0,0.09); border: 1px solid rgba(217,163,0,0.2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--grijs); font-family: inherit; padding: 2px 4px; transition: color 0.15s; }
     .btn-icon:hover { color: var(--geel); }
+    .chev { display: inline-block; width: 14px; text-align: center; flex-shrink: 0; }
     .header-btn { color: #fff; font-size: 12px; padding: 6px 12px; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.15s; }
     .header-btn:hover { opacity: 0.75; background: #555 !important; }
     .header-btn-icon { width: 36px; padding: 0; }
@@ -991,10 +992,10 @@ function renderSelectionBar(c, selName, matches, unmatched) {
     </div>
     <div style="display:flex;align-items:center;gap:6px" data-noprint>
       <button title="${allPanelsFolded?'Panelen uitklappen':'Panelen inklappen'}" class="btn btn-grey" style="display:flex;align-items:center;gap:4px;font-size:12px;padding:5px 10px" data-action="collapseAllPanels" data-val="${allPanelsFolded?'0':'1'}">
-        <span style="font-size:13px">${allPanelsFolded?'\u25B8':'\u25BE'}</span> Panelen
+        <span class="chev" style="font-size:13px">${allPanelsFolded?'\u25B8':'\u25BE'}</span> Panelen
       </button>
       <button title="${allMFolded?'Pipeline uitklappen':'Pipeline inklappen'}" class="btn btn-grey" style="display:flex;align-items:center;gap:4px;font-size:12px;padding:5px 10px" data-action="collapseAll" data-val="${allMFolded?'0':'1'}">
-        <span style="font-size:13px">${allMFolded?'\u25B8':'\u25BE'}</span> Pipeline
+        <span class="chev" style="font-size:13px">${allMFolded?'\u25B8':'\u25BE'}</span> Pipeline
       </button>
       ${selName ? `<button title="Selectie opheffen" class="btn btn-grey" style="font-size:12px;padding:5px 10px" data-action="clearSelection">\u2715 Reset</button>` : ''}
     </div>
@@ -1016,7 +1017,7 @@ function renderDevsPanel(c, devs, dts, matches) {
   html += '<div class="panel-header"><div style="display:flex;align-items:center;gap:6px">';
   html += `<span class="panel-title">Ontwikkelaars <span style="font-weight:300;color:${c.grijs}">(${devs.length})</span></span>`;
   if (dts.length > 0) {
-    html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllDevTypes">${allDtFolded?'\u25B8':'\u25BE'}</button>`;
+    html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllDevTypes"><span class="chev">${allDtFolded?'\u25B8':'\u25BE'}</span></button>`;
   }
   html += '</div>';
   html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
@@ -1030,7 +1031,7 @@ function renderDevsPanel(c, devs, dts, matches) {
     const isDtC = STATE.ui.collapsedDevTypes[type.id];
     html += `<div class="cat-group" data-devtype-group="${type.id}">`;
     html += `<div class="cat-header" draggable="true" data-drag-type="devType" data-drag-id="${type.id}">
-      <span style="font-size:13px;color:${c.grijs};flex-shrink:0;cursor:pointer" data-action="toggleDevTypeCollapse" data-id="${type.id}">${isDtC?'\u25B8':'\u25BE'}</span>
+      <span class="chev" style="font-size:13px;color:${c.grijs};cursor:pointer" data-action="toggleDevTypeCollapse" data-id="${type.id}">${isDtC?'\u25B8':'\u25BE'}</span>
       <span class="badge badge-lg">${esc(type.short||'?')}</span>
       <span class="cat-label">${esc(type.label||'Naamloos')}</span>
       ${isDtC ? `<span style="font-size:10px;color:${c.grijs};font-weight:300">(${td.length})</span>` : ''}
@@ -1100,7 +1101,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
   html += '<div class="panel-header"><div style="display:flex;align-items:center;gap:6px">';
   html += `<span class="panel-title">Kansen <span style="font-weight:300;color:${c.grijs}">(${unmatched.length})</span></span>`;
   if (unmatched.length > 0) {
-    html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllKansen">${allKFolded?'\u25B8':'\u25BE'}</button>`;
+    html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllKansen"><span class="chev">${allKFolded?'\u25B8':'\u25BE'}</span></button>`;
   }
   html += '</div>';
   html += '<button data-noprint title="Nieuwe kans toevoegen" class="btn btn-black btn-sm" data-action="addKans">+ Nieuw</button></div>';
@@ -1119,7 +1120,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
     html += `<div class="cat-group" data-kanscat-group="${cat.id}">`;
     html += `<div class="cat-header" draggable="true" data-drag-type="kansCat" data-drag-id="${cat.id}">`;
     if (ck.length > 0) {
-      html += `<span style="font-size:14px;color:${c.grijs};cursor:pointer" data-action="collapseCatKansen" data-id="${cat.id}">${allCatFolded?'\u25B8':'\u25BE'}</span>`;
+      html += `<span class="chev" style="font-size:14px;color:${c.grijs};cursor:pointer" data-action="collapseCatKansen" data-id="${cat.id}">${allCatFolded?'\u25B8':'\u25BE'}</span>`;
     }
     html += `<span class="cat-label">${esc(cat.label||'Naamloos')}</span>`;
     html += `<button data-noprint title="Categorie bewerken" class="btn-icon" data-action="editKansCat" data-id="${cat.id}">${ico('pencil',12)}</button>`;
@@ -1131,7 +1132,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
       const mp = mapsUrl(kans.adres);
       html += `<div class="kans-card" draggable="true" data-drag-type="kans" data-drag-id="${kans.id}" style="padding:${isKC?'6px 10px':'8px 10px'}">`;
       html += `<div style="display:flex;align-items:flex-start;gap:5px;cursor:pointer" data-action="toggleKansCollapse" data-id="${kans.id}">`;
-      html += `<span style="font-size:13px;color:${c.grijs};flex-shrink:0;line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
+      html += `<span class="chev" style="font-size:13px;color:${c.grijs};line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
       html += `<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:12px;line-height:1.3;color:${c.txtPrimary}">${esc(kans.name||'Naamloos')}</div></div>`;
       html += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0" data-noprint>`;
       html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}" title="Koppel aan ontwikkelaar">Match \u2192</button>`;
@@ -1163,7 +1164,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
       const mp = mapsUrl(kans.adres);
       html += `<div class="kans-card" draggable="true" data-drag-type="kans" data-drag-id="${kans.id}" style="padding:${isKC?'6px 10px':'8px 10px'}">`;
       html += `<div style="display:flex;align-items:flex-start;gap:5px;cursor:pointer" data-action="toggleKansCollapse" data-id="${kans.id}">`;
-      html += `<span style="font-size:13px;color:${c.grijs};flex-shrink:0;line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
+      html += `<span class="chev" style="font-size:13px;color:${c.grijs};line-height:1.3">${isKC?'\u25B8':'\u25BE'}</span>`;
       html += `<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:12px;line-height:1.3;color:${c.txtPrimary}">${esc(kans.name||'Naamloos')}</div></div>`;
       html += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0" data-noprint>`;
       html += `<button class="btn btn-match btn-xs" data-action="matchKans" data-id="${kans.id}" title="Koppel aan ontwikkelaar">Match \u2192</button>`;
@@ -1216,7 +1217,7 @@ function renderPipeline(c, matches, kansen, devs, dts) {
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:15px;font-weight:600;color:${sc};line-height:1.2">${esc(stage.label)}</span>
-            ${sm.length > 0 ? `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1;flex-shrink:0" data-action="collapseCol" data-id="${stage.id}">${allC?'\u25B8':'\u25BE'}</button>` : ''}
+            ${sm.length > 0 ? `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1;flex-shrink:0" data-action="collapseCol" data-id="${stage.id}"><span class="chev">${allC?'\u25B8':'\u25BE'}</span></button>` : ''}
           </div>
           <div style="font-size:10px;color:${c.grijs};margin-top:3px;font-weight:300">${esc(stage.sub)}</div>
         </div>
@@ -1292,12 +1293,12 @@ function renderMatchCard(c, match, stage, devs, dts) {
 
   // Titel-rij (altijd zichtbaar)
   html += `<div style="display:flex;align-items:center;gap:6px;cursor:pointer">`;
-  html += `<span style="font-size:14px;color:${c.grijs};flex-shrink:0;padding:2px 4px" data-action="toggleMatchCollapse" data-id="${match.id}">${isC?'\u25B8':'\u25BE'}</span>`;
+  html += `<span class="chev" style="font-size:14px;color:${c.grijs};padding:2px 0" data-action="toggleMatchCollapse" data-id="${match.id}">${isC?'\u25B8':'\u25BE'}</span>`;
   html += `<span style="font-weight:500;font-size:14px;line-height:1.3;flex:1;min-width:0">${esc(kans.name)}</span>`;
   if (isC && tl > 0) html += `<span style="font-size:10px;color:${c.grijs};flex-shrink:0">(${tl})</span>`;
   if (lockEnabled() && match.locked) html += `<span style="flex-shrink:0;opacity:0.5;color:${c.grijs}" title="Vergrendeld">${ico('lock',16)}</span>`;
   if (financialEnabled()) {
-    html += `<span style="flex-shrink:0;position:relative;opacity:${match.honorarium?'0.8':'0.35'};color:${match.honorarium?sc:c.grijs};display:inline-flex;align-items:center" title="${match.honorarium?fmtEuro(match.honorarium):'Geen honorarium ingevuld'}">${ico('banknote',18)}${!match.honorarium?`<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span>`:''}</span>`;
+    html += `<span style="flex-shrink:0;position:relative;opacity:${match.honorarium?'0.5':'0.35'};color:${c.grijs};display:inline-flex;align-items:center" title="${match.honorarium?fmtEuro(match.honorarium):'Geen honorarium ingevuld'}">${ico('banknote',18)}${!match.honorarium?`<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span>`:''}</span>`;
   }
   { const _as = getActionStatus(match);
     if (_as !== 'disabled' && match.stage !== 'actief') {
