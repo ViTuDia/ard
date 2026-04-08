@@ -861,7 +861,9 @@ function render() {
     if (lp) lp.style.width = STATE.ui.leftPanelWidth + 'px';
   }
 
-  renderModal();
+  // Skip modal re-render als gebruiker bezig is met invoer in de modal
+  const _aeInModal = document.activeElement?.closest('.modal-body');
+  if (!_aeInModal) renderModal();
   updateMobView();
 
   // Herstel zoekbalk focus
@@ -3656,10 +3658,17 @@ function setupEventListeners() {
   });
 
   document.body.addEventListener('dragover', e => {
-    const col = e.target.closest('[data-stage]');
-    const kansenPanel = e.target.closest('#kansen-panel');
-    const panel = e.target.closest('.panel');
-    const dropTarget = findDropTargetAt(e.target);
+    // Als pointer over de drag-indicator zelf gaat, kijk erachter
+    let tgt = e.target;
+    if (tgt === dragInd || dragInd.contains(tgt)) {
+      dragInd.style.display = 'none';
+      tgt = document.elementFromPoint(e.clientX, e.clientY) || tgt;
+      dragInd.style.display = 'block';
+    }
+    const col = tgt.closest('[data-stage]');
+    const kansenPanel = tgt.closest('#kansen-panel');
+    const panel = tgt.closest('.panel');
+    const dropTarget = findDropTargetAt(tgt);
     if (col || kansenPanel || panel || dropTarget) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
@@ -3675,7 +3684,7 @@ function setupEventListeners() {
         STATE.ui.dragOver = null;
         render();
       }
-      showIndicatorAt(e.target, e.clientY);
+      showIndicatorAt(tgt, e.clientY);
     }
   });
 
