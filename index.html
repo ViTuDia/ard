@@ -453,6 +453,7 @@ const STATE = {
     dark: localStorage.getItem('kb_dark') === '1',
     selectedDev: null, selectedMatch: null,
     collapsedKansen: {},  // kansId -> true
+    collapsedDevTypes: {},  // devTypeId -> true
     dragging: null, draggingKans: null, dragOver: null, dragKansen: false,
     modal: null, modalData: null, modalExtra: null,
     mobTab: 'devs', mobStage: 'matches',
@@ -1005,8 +1006,15 @@ function renderDevsPanel(c, devs, dts, matches) {
     if (m) hlMap = matchDevIds(m);
   }
 
+  const allDtFolded = dts.length > 0 && dts.every(t => STATE.ui.collapsedDevTypes[t.id]);
+
   let html = '<div class="panel">';
-  html += `<div class="panel-header"><span class="panel-title">Ontwikkelaars <span style="font-weight:300;color:${c.grijs}">(${devs.length})</span></span>`;
+  html += '<div class="panel-header"><div style="display:flex;align-items:center;gap:6px">';
+  html += `<span class="panel-title">Ontwikkelaars <span style="font-weight:300;color:${c.grijs}">(${devs.length})</span></span>`;
+  if (dts.length > 0) {
+    html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllDevTypes">${allDtFolded?'\u25B8':'\u25BE'}</button>`;
+  }
+  html += '</div>';
   html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
   html += '<div class="panel-sub">Klik om koppelingen te zien.</div>';
   html += `<div class="panel-search-wrap" data-noprint><input class="panel-search" placeholder="\uD83D\uDD0D Zoek ontwikkelaar..." value="${esc(STATE.ui.searchDevs)}" oninput="STATE.ui.searchDevs=this.value;render();"><button class="panel-search-clear" onclick="STATE.ui.searchDevs='';render();">\u2715</button></div>`;
@@ -1015,13 +1023,16 @@ function renderDevsPanel(c, devs, dts, matches) {
   dts.forEach(type => {
     const searchD = STATE.ui.searchDevs.toLowerCase();
     const td = devs.filter(d => d.tid === type.id && (!searchD || (d.name||'').toLowerCase().includes(searchD) || (d.schaal||'').toLowerCase().includes(searchD))).sort((a,b) => (a.so||0) - (b.so||0));
+    const isDtC = STATE.ui.collapsedDevTypes[type.id];
     html += `<div class="cat-group" data-devtype-group="${type.id}">`;
     html += `<div class="cat-header" draggable="true" data-drag-type="devType" data-drag-id="${type.id}">
+      <span style="font-size:13px;color:${c.grijs};flex-shrink:0;cursor:pointer" data-action="toggleDevTypeCollapse" data-id="${type.id}">${isDtC?'\u25B8':'\u25BE'}</span>
       <span class="badge badge-lg">${esc(type.short||'?')}</span>
       <span class="cat-label">${esc(type.label||'Naamloos')}</span>
+      ${isDtC ? `<span style="font-size:10px;color:${c.grijs};font-weight:300">(${td.length})</span>` : ''}
       <button data-noprint title="Type bewerken" class="btn-icon" data-action="editDevType" data-id="${type.id}">${ico('pencil',12)}</button>
     </div>`;
-    html += '<div class="cat-items">';
+    html += `<div class="cat-items" style="${isDtC?'display:none':''}">`;
     td.forEach(dev => {
       const isSel = selectedDev === dev.id;
       const cnt = objToArr(STATE.data.matches).filter(m => matchDevIds(m).has(dev.id)).length;
@@ -2686,6 +2697,16 @@ function setupEventListeners() {
         if (Object.keys(updates).length > 0) fbMulti(updates);
         break;
       }
+      case 'collapseAllDevTypes': {
+        const dts2 = sortedArr(STATE.data.devTypes);
+        const allF2 = dts2.every(t => STATE.ui.collapsedDevTypes[t.id]);
+        dts2.forEach(t => STATE.ui.collapsedDevTypes[t.id] = !allF2);
+        if (allF2) STATE.ui.collapsedDevTypes = {};
+        render(); break;
+      }
+      case 'toggleDevTypeCollapse':
+        STATE.ui.collapsedDevTypes[id] = !STATE.ui.collapsedDevTypes[id];
+        render(); break;
       case 'collapseAllKansen': {
         const unm = unmatchedKansen();
         const allF = unm.every(k => STATE.ui.collapsedKansen[k.id]);
