@@ -176,7 +176,6 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - `/home/user/koppelbaas/index.html` — de volledige app
 - `/home/user/koppelbaas/functions/index.js` — iCal Cloud Function
 - `/home/user/koppelbaas/functions/package.json` — Cloud Function dependencies
-- `/home/user/koppelbaas/seed.html` — testdata loader
 - `/home/user/koppelbaas/robots.txt` — zoekmachine-blokkering
 - `/home/user/koppelbaas/database.rules.json` — Firebase rules
 - `/home/user/koppelbaas/firebase.json` — hosting + functions config
