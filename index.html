@@ -209,7 +209,6 @@
       .header-div { height: 24px; }
       .header-title-name { font-size: 16px; }
       .header-right { gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
-      .header-stat { display: none; }
       .header-fin-label { display: inline; }
       .header-fin-full { display: none; }
       [data-action="print"] { display: none; }
@@ -523,15 +522,24 @@ const _geocodeMemCache = {};
 async function geocodeAddress(adres) {
   if (!adres) return null;
   if (_geocodeMemCache[adres]) return _geocodeMemCache[adres];
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&countrycodes=nl&limit=1`;
+  async function tryGeocode(q) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=nl&limit=1`;
     const res = await fetch(url, {headers:{'User-Agent':'DeKoppelbaas/1.0'}});
     const data = await res.json();
-    if (data && data[0]) {
-      const r = {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
-      _geocodeMemCache[adres] = r;
-      return r;
+    if (data && data[0]) return {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
+    return null;
+  }
+  try {
+    let r = await tryGeocode(adres);
+    // Fallback: verwijder huisnummer en probeer alleen straat + stad
+    if (!r) {
+      const stripped = adres.replace(/\s*\d+[a-zA-Z]?\s*,/, ',');
+      if (stripped !== adres) {
+        await delay(1100);
+        r = await tryGeocode(stripped);
+      }
     }
+    if (r) { _geocodeMemCache[adres] = r; return r; }
   } catch(e) { console.warn('Geocode fout:', e); }
   return null;
 }
@@ -941,10 +949,6 @@ function renderHeader(c, devs, kansen, matches, alarms) {
       <div><div class="header-title-label">Acquisitie</div><div class="header-title-name">De Koppelbaas</div></div>
     </div>
     <div class="header-right">
-      <div class="header-stat"><div class="header-stat-val">${devs.length}</div><div class="header-stat-lbl">devs</div></div>
-      <div class="header-stat"><div class="header-stat-val">${kansen.length}</div><div class="header-stat-lbl">vrij</div></div>
-      <div class="header-stat"><div class="header-stat-val">${matches.length}</div><div class="header-stat-lbl">matches</div></div>
-      <div style="width:12px"></div>
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">${ico('alert',18)}</span> ${al} alert${al!==1?'s':''}</button>
       ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
       <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">${ico('map',18)}</span></button>
@@ -997,7 +1001,7 @@ function renderDevsPanel(c, devs, dts, matches) {
   }
 
   let html = '<div class="panel">';
-  html += '<div class="panel-header"><span class="panel-title">Ontwikkelaars</span>';
+  html += `<div class="panel-header"><span class="panel-title">Ontwikkelaars <span style="font-weight:300;color:${c.grijs}">(${devs.length})</span></span>`;
   html += '<button data-noprint title="Nieuwe ontwikkelaar toevoegen" class="btn btn-black btn-sm" data-action="addDev">+ Nieuw</button></div>';
   html += '<div class="panel-sub">Klik om koppelingen te zien.</div>';
   html += `<div class="panel-search-wrap" data-noprint><input class="panel-search" placeholder="\uD83D\uDD0D Zoek ontwikkelaar..." value="${esc(STATE.ui.searchDevs)}" oninput="STATE.ui.searchDevs=this.value;render();"><button class="panel-search-clear" onclick="STATE.ui.searchDevs='';render();">\u2715</button></div>`;
@@ -1074,7 +1078,7 @@ function renderKansenPanel(c, unmatched, kcs, matches) {
 
   let html = `<div class="panel" id="kansen-panel">`;
   html += '<div class="panel-header"><div style="display:flex;align-items:center;gap:6px">';
-  html += '<span class="panel-title">Kansen</span>';
+  html += `<span class="panel-title">Kansen <span style="font-weight:300;color:${c.grijs}">(${unmatched.length})</span></span>`;
   if (unmatched.length > 0) {
     html += `<button data-noprint class="btn-icon" style="font-size:14px;line-height:1" data-action="collapseAllKansen">${allKFolded?'\u25B8':'\u25BE'}</button>`;
   }
@@ -1200,18 +1204,16 @@ function renderPipeline(c, matches, kansen, devs, dts) {
       </div>
       ${(() => {
         const minTxt = stage.needsMin2 ? 'Min. 2 koppelingen' : 'Min. 1 koppeling';
-        if (!financialEnabled()) return `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">${minTxt}</div>`;
-        const rawH = sm.reduce((s,m) => s + (m.honorarium||0), 0);
+        const rawH = financialEnabled() ? sm.reduce((s,m) => s + (m.honorarium||0), 0) : 0;
         const pct = stagePct(stage.id);
         const gw = Math.round(rawH * pct / 100);
-        if (!rawH) return `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">${minTxt}</div>`;
         return `<div style="font-size:10px;color:${c.grijs};font-weight:300;font-style:italic">${minTxt}</div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px">
-          <div style="font-size:11px;color:${c.grijs};font-weight:300">${fmtEuro(rawH)} honorarium</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;min-height:22px">
+          ${rawH ? `<div style="font-size:11px;color:${c.grijs};font-weight:300">${fmtEuro(rawH)} honorarium</div>
           <div style="display:flex;align-items:baseline;gap:4px">
             <span style="font-size:10px;color:${c.grijs};font-weight:300">${pct}% \u2192</span>
             <span style="font-size:16px;font-weight:600;color:${sc}">${fmtEuro(gw)}</span>
-          </div>
+          </div>` : '&nbsp;'}
         </div>`;
       })()}
     </div>`;
