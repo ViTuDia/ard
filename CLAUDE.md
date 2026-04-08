@@ -62,24 +62,32 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 
 ### Actie-signalering
 - Per match een `nextAction` datumveld (volgende geplande actie)
-- Klokje-indicator op matchkaart (grijs=geen, groen=gepland, oranje=verlopen, rood=kritiek)
-- Drempels instelbaar per pipeline-kolom in admin (default: matches 14d, verkennend 10d, offerte 7d, actief 7d)
+- Gekleurde stip op matchkaart (12px): grijs=geen, groen=gepland, oranje=verlopen, rood=kritiek
+- Actieve matches (Werk) zijn uitgesloten van actie-signalering — werk wordt elders bijgehouden
+- Drempels instelbaar per pipeline-kolom in admin (default: matches 14d, verkennend 10d, offerte 7d)
 - Per-kaart override mogelijk (`actionThreshold` veld in bewerkmodal)
-- Verlopen/kritieke matches verschijnen in alarm-dropdown
+- Alerts gegroepeerd in popup: "Koppelingen (X)" en "Acties (X)" apart
 - "X matches zonder geplande actie" telling in alarmen
+- Afspraken-overzicht: tabel-modal (klok-knop in header) met alle niet-actieve matches
+  - Status-bolletje, bewerkbare datum, drempel per rij
+  - Oranje/rood status consistent met drempel (custom of standaard)
+  - Wijzigingen direct opgeslagen, status ververst live
 - Todoist blijft het taaksysteem — Koppelbaas signaleert alleen welke matches aandacht nodig hebben
 
 ### Header & menu
-- Header: stats (devs/vrij/matches) → spacer → alerts knop → verwacht knop → kaart knop → tandwiel-menu
+- Header: alerts knop → afspraken knop → verwacht knop → kaart knop → tandwiel-menu
+- Stats (devs/vrij) verplaatst naar paneltitels: "Ontwikkelaars (15)", "Kansen (2)"
 - Dropdown-menu onder tandwiel: Instellingen, Printen, Licht/Donker thema, Uitloggen, status-bolletjes (verbinding + feedback)
 - Menu-items met hover-effect, sluit bij klik erbuiten
-- Feedback-bolletje klikbaar naar Firebase console
+- Feedback-bolletje: groen = geen feedback, rood = feedback ontvangen (klikbaar naar Firebase console)
 - Instellingen-modal (was "Admin") met secties: Features, Conversie%, Honorarium defaults, Actie-drempels, Agenda-feed, Backup & export, Handleiding, Feedback, Wachtwoord
 
 ### Matchkaart layout
-- Titelrij: ▸ Naam (count) [lock] [clock] [€] [Badge]
+- Titelrij: ▸ Naam (count) [lock] [€] [●actie] [Badge]
 - Badge rechts in titelrij met stage.short (Match/Verkennend/Offerte/Werk)
-- Klokje en € icoon altijd zichtbaar (met rode streep als waarde ontbreekt, voor visuele rust)
+- Actie-indicator als gekleurde stip (12px): grijs=geen, groen=gepland, oranje=verlopen, rood=kritiek
+- € icoon altijd zichtbaar (met rode streep als waarde ontbreekt)
+- Actie-bolletje en € niet zichtbaar op actieve matches (Werk)
 - Slotje alleen zichtbaar als vergrendeld
 - BVO en functie samengevoegd op één regel: "BVO 5.000m² — Woningbouw"
 - Adres met mapPin icoon, contact met user icoon, honorarium met € icoon
