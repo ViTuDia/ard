@@ -1282,7 +1282,7 @@ function renderMatchCard(c, match, stage, devs, dts) {
       let _acTt = 'Geen volgende actie gepland';
       if (match.nextAction) { const _n2=new Date();_n2.setHours(0,0,0,0);const _nx=new Date(match.nextAction);_nx.setHours(0,0,0,0);const _df=Math.round((_nx-_n2)/86400000);
         _acTt=_df>=0?'Volgende actie: '+_nx.toLocaleDateString('nl-NL'):'Actie verlopen: '+Math.abs(_df)+' dag'+(Math.abs(_df)!==1?'en':'')+' geleden'; }
-      html += `<span style="flex-shrink:0;position:relative;opacity:${_as==='none'?'0.35':'0.8'};color:${_acCol}" title="${esc(_acTt)}">${ico('clock',15)}${_as==='none'?`<span style="position:absolute;left:0;right:0;top:50%;height:2px;background:${c.rood};transform:rotate(-45deg)"></span>`:''}</span>`;
+      html += `<span style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:${_acCol};opacity:${_as==='none'?'0.3':'0.85'}" title="${esc(_acTt)}"></span>`;
     }
   }
   if (financialEnabled()) {
@@ -2099,7 +2099,7 @@ function renderAdminModal(c) {
           ${_toggle('lockEnabled', lockEnabled())}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
-          <div><div style="font-size:12px;font-weight:500;color:${c.txtPrimary}">Actie-signalering</div><div style="font-size:10px;color:${c.grijs};font-weight:300">Klokjes op kaarten, waarschuw bij verlopen acties</div></div>
+          <div><div style="font-size:12px;font-weight:500;color:${c.txtPrimary}">Actie-signalering</div><div style="font-size:10px;color:${c.grijs};font-weight:300">Bolletjes op kaarten, waarschuw bij verlopen acties</div></div>
           ${_toggle('actionSignaling', actionEnabled())}
         </div>
       </div>
