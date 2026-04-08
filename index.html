@@ -1423,8 +1423,8 @@ function renderModal() {
     case 'stageGate': { w=400; title=modalExtra?.q||'Bevestigen'; body = renderStageGateModal(c); break; }
     case 'admin': { w=440; title=ico('settings',16)+' Instellingen'; body = renderAdminModal(c); break; }
     case 'help': { w=540; title='? Help'; body = renderHelpModal(c); break; }
-    case 'finOverview': { w=700; title=ico('banknote',16)+' Financieel overzicht'; body = renderFinOverviewModal(c); break; }
-    case 'actionOverview': { w=700; title='Afspraken-overzicht'; body = renderActionOverviewModal(c); break; }
+    case 'finOverview': { w=820; title=ico('banknote',16)+' Financieel overzicht'; body = renderFinOverviewModal(c); break; }
+    case 'actionOverview': { w=780; title='Afspraken-overzicht'; body = renderActionOverviewModal(c); break; }
     case 'map': { w=800; title=ico('map',16)+' Kaart'; body = renderMapModal(c); break; }
     case 'sysConfirm': {
       w=380; title='Bevestigen';
@@ -1779,16 +1779,16 @@ function renderFinOverviewModal(c) {
   const getVal = (mid, field, orig) => edits[mid]?.[field] !== undefined ? edits[mid][field] : orig;
   let totalHon = 0;
   let totalGw = 0;
-  let html = `<div style="font-size:11px;color:${c.grijs};margin-bottom:10px;font-weight:300">Bewerk financiële gegevens per match. Wijzigingen worden direct opgeslagen.</div>`;
-  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
+  let html = `<div style="font-size:12px;color:${c.grijs};margin-bottom:14px;font-weight:300">Bewerk financiële gegevens per match. Wijzigingen worden direct opgeslagen.</div>`;
+  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">`;
   html += `<thead><tr style="border-bottom:2px solid ${c.zachtgrijs};text-align:left">
-    <th style="padding:6px 4px;font-weight:600;min-width:120px">Kans</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:center">Fase</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:center;min-width:60px">Type</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:60px">Veld 1</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:60px">Veld 2</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:80px">Honorarium</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:right;min-width:70px">Gewogen</th>
+    <th style="padding:10px 8px;font-weight:600;min-width:140px">Kans</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:center">Fase</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:center;min-width:65px">Type</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:right;min-width:70px">Veld 1</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:right;min-width:70px">Veld 2</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:right;min-width:90px">Honorarium</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:right;min-width:80px">Gewogen</th>
   </tr></thead><tbody>`;
   let prevStage = '';
   matches.forEach(m => {
@@ -1803,7 +1803,7 @@ function renderFinOverviewModal(c) {
     totalGw += gw;
     const stageChanged = m.stage !== prevStage;
     prevStage = m.stage;
-    const inp = `style="width:100%;text-align:right;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
+    const inp = `style="width:100%;text-align:right;padding:5px 6px;border:1px solid ${c.zachtgrijs};border-radius:3px;font-size:12px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
     let field1 = '', field2 = '', typeLabel = '';
     if (ct === 'bvo') {
       typeLabel = 'BVO';
@@ -1822,26 +1822,26 @@ function renderFinOverviewModal(c) {
     }
     if (stageChanged) {
       const stageCnt = matches.filter(x => x.stage === m.stage && STATE.data.kansen[x.kid]).length;
-      html += `<tr><td colspan="7" style="padding:8px 4px 4px;font-size:12px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
+      html += `<tr><td colspan="7" style="padding:12px 8px 6px;font-size:13px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
     }
     html += `<tr style="border-bottom:1px solid ${c.zachtgrijs}22">
-      <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
-      <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
-      <td style="padding:2px 1px"><select style="width:100%;padding:2px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:10px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" onchange="KB.finEditType('${m.id}',this.value)">
+      <td style="padding:8px;font-weight:400">${esc(kans.name)}</td>
+      <td style="padding:8px 6px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:9px">${esc(stage?.short||'?')}</span></td>
+      <td style="padding:4px 3px"><select style="width:100%;padding:4px;border:1px solid ${c.zachtgrijs};border-radius:3px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}" onchange="KB.finEditType('${m.id}',this.value)">
         <option value="bvo" ${ct==='bvo'?'selected':''}>BVO</option>
         <option value="units" ${ct==='units'?'selected':''}>Units</option>
         <option value="fixed" ${ct==='fixed'?'selected':''}>Vast</option>
       </select></td>
-      <td style="padding:2px 1px">${field1}</td>
-      <td style="padding:2px 1px">${field2}</td>
-      <td data-fin-hon="${m.id}" style="padding:5px 4px;text-align:right;font-weight:500;color:${hon?c.txtPrimary:c.grijs}">${hon ? fmtEuro(hon) : '\u2014'}</td>
-      <td data-fin-gw="${m.id}" style="padding:5px 4px;text-align:right;color:${sc};font-weight:400">${gw ? fmtEuro(gw) : '\u2014'}</td>
+      <td style="padding:4px 3px">${field1}</td>
+      <td style="padding:4px 3px">${field2}</td>
+      <td data-fin-hon="${m.id}" style="padding:8px 6px;text-align:right;font-weight:500;color:${hon?c.txtPrimary:c.grijs}">${hon ? fmtEuro(hon) : '\u2014'}</td>
+      <td data-fin-gw="${m.id}" style="padding:8px 6px;text-align:right;color:${sc};font-weight:400">${gw ? fmtEuro(gw) : '\u2014'}</td>
     </tr>`;
   });
   html += `<tr style="border-top:2px solid ${c.zachtgrijs}">
-    <td colspan="5" style="padding:6px 4px;font-weight:600;text-align:right">Totaal</td>
-    <td data-fin-total-hon style="padding:6px 4px;text-align:right;font-weight:600">${fmtEuro(totalHon)}</td>
-    <td data-fin-total-gw style="padding:6px 4px;text-align:right;font-weight:600">${fmtEuro(totalGw)}</td>
+    <td colspan="5" style="padding:10px 8px;font-weight:600;text-align:right">Totaal</td>
+    <td data-fin-total-hon style="padding:10px 6px;text-align:right;font-weight:600">${fmtEuro(totalHon)}</td>
+    <td data-fin-total-gw style="padding:10px 6px;text-align:right;font-weight:600">${fmtEuro(totalGw)}</td>
   </tr>`;
   html += '</tbody></table></div>';
   return html;
@@ -1852,15 +1852,15 @@ function renderActionOverviewModal(c) {
     return si(a.stage) - si(b.stage) || (a.so||0) - (b.so||0);
   });
   const today2 = new Date(); today2.setHours(0,0,0,0);
-  const inp = `style="width:100%;padding:3px 4px;border:1px solid ${c.zachtgrijs};border-radius:2px;font-size:11px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
-  let html = `<div style="font-size:11px;color:${c.grijs};margin-bottom:10px;font-weight:300">Plan en bewerk afspraken per match. Wijzigingen worden direct opgeslagen.</div>`;
-  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
+  const inp = `style="width:100%;padding:5px 6px;border:1px solid ${c.zachtgrijs};border-radius:3px;font-size:12px;font-family:inherit;background:${c.kaart};color:${c.txtPrimary}"`;
+  let html = `<div style="font-size:12px;color:${c.grijs};margin-bottom:14px;font-weight:300">Plan en bewerk afspraken per match. Wijzigingen worden direct opgeslagen.</div>`;
+  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">`;
   html += `<thead><tr style="border-bottom:2px solid ${c.zachtgrijs};text-align:left">
-    <th style="padding:6px 4px;font-weight:600;min-width:120px">Kans</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:center">Fase</th>
-    <th style="padding:6px 4px;font-weight:600;text-align:center;min-width:50px">Status</th>
-    <th style="padding:6px 4px;font-weight:600;min-width:110px">Volgende actie</th>
-    <th style="padding:6px 4px;font-weight:600;min-width:55px">Drempel</th>
+    <th style="padding:10px 8px;font-weight:600;min-width:140px">Kans</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:center">Fase</th>
+    <th style="padding:10px 6px;font-weight:600;text-align:center;min-width:80px">Status</th>
+    <th style="padding:10px 6px;font-weight:600;min-width:120px">Volgende actie</th>
+    <th style="padding:10px 6px;font-weight:600;min-width:65px">Drempel</th>
   </tr></thead><tbody>`;
   let prevStage = '';
   let planned = 0, expired = 0, noPlan = 0;
@@ -1884,18 +1884,18 @@ function renderActionOverviewModal(c) {
     } else { statusDot = c.grijs; statusTxt = 'Geen'; noPlan++; }
     if (stageChanged) {
       const stageCnt = allMatches.filter(x => x.stage === m.stage && STATE.data.kansen[x.kid]).length;
-      html += `<tr><td colspan="5" style="padding:8px 4px 4px;font-size:12px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
+      html += `<tr><td colspan="5" style="padding:12px 8px 6px;font-size:13px;font-weight:600;color:${sc};background:${stageBg(m.stage)};border-bottom:1px solid ${sc}33">${esc(stage?.label||'?')} (${stageCnt})</td></tr>`;
     }
     html += `<tr style="border-bottom:1px solid ${c.zachtgrijs}22">
-      <td style="padding:5px 4px;font-weight:400">${esc(kans.name)}</td>
-      <td style="padding:5px 4px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:8px">${esc(stage?.short||'?')}</span></td>
-      <td style="padding:5px 4px;text-align:center"><span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block"></span><span style="font-size:10px;color:${statusDot=== c.grijs?c.grijs:statusDot};font-weight:500">${statusTxt}</span></span></td>
-      <td style="padding:2px 1px"><input type="date" data-act-mid="${m.id}" data-act-fld="nextAction" value="${m.nextAction||''}" ${inp} onchange="KB.actEdit('${m.id}','nextAction',this.value||null)"></td>
-      <td style="padding:2px 1px"><input type="number" min="1" max="365" data-act-mid="${m.id}" data-act-fld="actionThreshold" value="${m.actionThreshold||''}" placeholder="${defTh}" ${inp} onchange="KB.actEdit('${m.id}','actionThreshold',this.value?Number(this.value):null)"></td>
+      <td style="padding:8px;font-weight:400">${esc(kans.name)}</td>
+      <td style="padding:8px 6px;text-align:center"><span class="stage-badge" style="color:${sc};background:${stageBg(m.stage)};border:1px solid ${sc}33;font-size:9px">${esc(stage?.short||'?')}</span></td>
+      <td style="padding:8px 6px;text-align:center"><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:${statusDot};display:inline-block"></span><span style="font-size:11px;color:${statusDot=== c.grijs?c.grijs:statusDot};font-weight:500">${statusTxt}</span></span></td>
+      <td style="padding:4px 3px"><input type="date" data-act-mid="${m.id}" data-act-fld="nextAction" value="${m.nextAction||''}" ${inp} onchange="KB.actEdit('${m.id}','nextAction',this.value||null)"></td>
+      <td style="padding:4px 3px"><input type="number" min="1" max="365" data-act-mid="${m.id}" data-act-fld="actionThreshold" value="${m.actionThreshold||''}" placeholder="${defTh}" ${inp} onchange="KB.actEdit('${m.id}','actionThreshold',this.value?Number(this.value):null)"></td>
     </tr>`;
   });
   html += '</tbody></table></div>';
-  html += `<div style="margin-top:10px;font-size:11px;color:${c.grijs};font-weight:300;display:flex;gap:16px;flex-wrap:wrap">`;
+  html += `<div style="margin-top:14px;font-size:12px;color:${c.grijs};font-weight:300;display:flex;gap:18px;flex-wrap:wrap">`;
   html += `<span><span style="color:${c.groen}">\u25CF</span> ${planned} gepland</span>`;
   html += `<span><span style="color:${c.rood}">\u25CF</span> ${expired} verlopen</span>`;
   html += `<span><span style="color:${c.grijs}">\u25CF</span> ${noPlan} zonder actie</span>`;
