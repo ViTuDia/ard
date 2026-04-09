@@ -2895,13 +2895,14 @@ function setupEventListeners() {
       }
       case 'saveDev': {
         const d = STATE.ui.modalData; if (!d) break;
+        const _dirty = d.isNew || STATE.ui.modalDirty;
         if (d.isNew) {
           const so = objToArr(STATE.data.devs).filter(x => x.tid === (d.tid||'')).length;
           fbPush('devs', {name:d.name||'',tid:d.tid||'',schaal:d.schaal||'',contact:d.contact||'',notitie:d.notitie||'',so,createdAt:today(),updatedAt:today(),ownerId:null});
         } else {
           fbUpdate(`devs/${d.id}`, {name:d.name||'',tid:d.tid||'',schaal:d.schaal||'',contact:d.contact||'',notitie:d.notitie||'',updatedAt:today()});
         }
-        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); if(_dirty) showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteDev': {
         const dev = STATE.data.devs[id];
@@ -2922,6 +2923,7 @@ function setupEventListeners() {
       }
       case 'saveKans': {
         const k = STATE.ui.modalData; if (!k) break;
+        const _kDirty = k.isNew || STATE.ui.modalDirty;
         if (k.isNew) {
           const so = objToArr(STATE.data.kansen).length;
           fbPush('kansen', {name:k.name||'',cid:k.cid||'',adres:k.adres||'',omvang:k.omvang||'',type:k.type||'Wonen',contact:k.contact||'',notitie:k.notitie||'',so,createdAt:today(),updatedAt:today(),ownerId:null,lat:null,lng:null});
@@ -2946,7 +2948,7 @@ function setupEventListeners() {
         if (STATE.ui._returnToEditMatch) { const md = STATE.ui._returnToEditMatch; STATE.ui._returnToEditMatch = null; STATE.ui.modal = 'editMatch'; STATE.ui.modalData = md; renderModal(); }
         else if (STATE.ui._returnToMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; renderModal(); initMapModal(); }
         else { STATE.ui.modal = null; renderModal(); }
-        showToast('Opgeslagen'); break;
+        if(_kDirty) showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteKans': {
         const k = STATE.data.kansen[id];
@@ -3025,6 +3027,7 @@ function setupEventListeners() {
       }
       case 'saveMatch': {
         const md = STATE.ui.modalData; if (!md) break;
+        const _mDirty = STATE.ui.modalDirty;
         const origM = STATE.data.matches[md.id];
         const upd = {notitie:md.notitie||'',stage:md.stage,links:md.links||[],coals:md.coals||[],updatedAt:today(),honorarium:md.honorarium||0,bvo:md.bvo||0,bkm2:md.bkm2||0,honPct:md.honPct||0,calcType:md.calcType||'bvo',units:md.units||0,pricePerUnit:md.pricePerUnit||0,nextAction:md.nextAction||null,actionThreshold:md.actionThreshold||null};
         // StageHistory bijwerken als stage gewijzigd
@@ -3033,7 +3036,7 @@ function setupEventListeners() {
           upd.so = objToArr(STATE.data.matches).filter(m => m.stage === md.stage).length;
         }
         fbUpdate(`matches/${md.id}`, upd);
-        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); if(_mDirty) showToast('Opgeslagen'); break;
       }
       case 'deleteMatch': {
         const _bak = JSON.parse(JSON.stringify(STATE.data.matches[id]||{}));
@@ -3137,8 +3140,9 @@ function setupEventListeners() {
       }
       case 'saveDevType': {
         const d = STATE.ui.modalData; if (!d) break;
+        const _dtDirty = STATE.ui.modalDirty;
         fbUpdate(`devTypes/${d.id}`, {label:d.label||'', short:(d.short||'').toUpperCase(), updatedAt:today()});
-        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); if(_dtDirty) showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteDevType':
         STATE.ui.modal = 'confirmDelete'; STATE.ui.modalExtra = {type:'devType',id};
@@ -3158,8 +3162,9 @@ function setupEventListeners() {
       }
       case 'saveKansCat': {
         const d = STATE.ui.modalData; if (!d) break;
+        const _kcDirty = STATE.ui.modalDirty;
         fbUpdate(`kansCats/${d.id}`, {label:d.label||'', updatedAt:today()});
-        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); showToast('Opgeslagen'); break;
+        STATE.ui.modal = null; STATE.ui.modalDirty = false; renderModal(); if(_kcDirty) showToast('Opgeslagen'); break;
       }
       case 'confirmDeleteKansCat':
         STATE.ui.modal = 'confirmDelete'; STATE.ui.modalExtra = {type:'kansCat',id};
