@@ -4,13 +4,13 @@
 Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontwikkelaars aan kansen (vastgoedprojecten) tot matches die door een kanban-pipeline bewegen.
 
 ## Technische stack
-- Single-file vanilla JS app: `index.html` (~3800 regels)
+- Single-file vanilla JS app: `index.html` (~3900 regels)
 - Firebase Realtime Database (project: atelierruimdenkers-d47d6)
 - GitHub Pages hosting: https://vitudia.github.io/koppelbaas/
 - SHA-256 wachtwoord auth, dark mode, CSS custom properties
 - Touch drag polyfill voor iOS/iPadOS
 - Leaflet.js + OpenStreetMap/CartoDB voor kaartweergave
-- Nominatim geocoding met Firebase caching
+- Nominatim geocoding met Firebase caching + fallback zonder huisnummer
 - Lucide-style inline SVG iconen (ico() helper, geen CDN dependency)
 - Firebase Cloud Function voor iCal feed (functions/)
 
@@ -22,41 +22,49 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 
 ## Git
 - Repo: vitudia/koppelbaas (public)
-- Wijzigingen altijd naar main pushen voor GitHub Pages deploy
+- Wijzigingen altijd naar main mergen en pushen voor GitHub Pages deploy
 
 ## Voltooide features
 - Complete kanban board (4 stages: matches, verkennend, offerte, actief)
-- Ontwikkelaars-paneel met type-groepen, badges, highlight/selectie
+- Ontwikkelaars-paneel met type-groepen, badges, highlight/selectie, inklapbare categorieën
 - Kansen-paneel met categorie-groepen, in/uitklappen
 - Match-kaarten met coalities, stage gates, alarmsysteem
 - Drag & drop: desktop (HTML5) + touch (iOS polyfill met 200ms hold)
 - Drag reorder: matches in pipeline, devTypes, kansCats, devs, kansen binnen én tussen categorieën
 - Drag indicator: single fixed-positioned element, gap-centered, met geel bolletje (open cirkel)
+- Drag indicator verdwijnt niet meer bij hover (visibility:hidden + elementFromPoint fallback)
 - Kans naar pipeline slepen → opent pickDevs modal voor match-aanmaak
 - Resizable divider tussen panelen en pipeline (standaard 600px: 300px per paneel)
 - Cat-group visuele hiërarchie (achtergrond containers voor categorieën)
 - Pipeline-kolommen met subtiele stage-kleur achtergrond (6% opacity), borders doorlopend tot footer
+- Pipeline kolomheaders: altijd gelijke hoogte (min-height reservering ook zonder financiële data)
 - Dark mode met 30+ kleurvariabelen
 - Login flow: auto-detect setup als geen hash, 4s timeout fallback
 - Mobiel: tab-navigatie (SVG iconen: users/map-pin/kanban), stage-tabs, move-knoppen, geen selectie-highlight
+- Mobiel: header knoppen nowrap + compact, actie/drempel velden single-column
 - Styled confirm-modals overal (geen native confirm/alert)
 - Verwijder-dialogen tonen impact: aantal koppelingen, honorarium dat verloren gaat
 - Undo-toast bij match-verwijdering (6 seconden "Ongedaan maken" knop)
+- Toast "Opgeslagen" alleen bij daadwerkelijke wijzigingen (niet bij openen+sluiten)
 - Zoekbalken met ✕ clear-knop (CSS :not(:placeholder-shown))
 - Scroll-behoud bij elke renderModal() call (modal-body + modal-scroll-list)
+- Modal focus behouden bij typen (render() slaat renderModal() over als input actief is in modal)
 - Header-knoppen: uniforme hoogte (34px), vaste breedte icon-knoppen (36px), 18px iconen
 - Mobiel: single-tap werkt (geen render bij niet-drag touchend), touch drag transparantie 0.15
-- Verbindingsindicator + feedback-bolletje in footer (zonder tekst)
+- Verbindingsindicator + feedback-bolletje in footer (groen=geen feedback, rood=feedback ontvangen)
 - 10+ UX features: toast, zoekbalk, escape, dubbelklik, swipe tabs, haptic, lege-kolom berichten, dirty-modal warning, tab-tellers
 - Print: landscape, geen marges
 - Orphaned matches: matches met verwijderde kans tonen als rood kaartje met delete-knop
 - Alle iconen als inline Lucide SVG (ico() helper met 14 iconen, geen emoji's)
+- Chevrons (.chev class): vaste breedte (14px) zodat tekst niet verspringt bij in/uitklappen
+- Tekst-truncatie (ellipsis) op lange kans-namen in matchkaarten en kansen-paneel
+- Input focus/hover stijlen in modals (gele rand focus, grijze rand hover, transitie)
 
 ### Feature-toggles
 - Drie features aan/uit te zetten in instellingen (data blijft bewaard in Firebase):
   - **Financieel overzicht**: honorarium, verwachte omzet, calculator, €-icoon
   - **Vergrendeling**: slotjes op matchkaarten, voorkom verslepen naar andere kolom
-  - **Actie-signalering**: klokjes op kaarten, alarmen bij verlopen acties
+  - **Actie-signalering**: bolletjes op kaarten, alarmen bij verlopen acties
 - Toggles als schuifknoppen in instellingen-modal, werken via data-action click delegation
 - Default: alle drie uit. Gebruiker zet aan wat nodig is
 
@@ -74,6 +82,11 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
   - Wijzigingen direct opgeslagen, status ververst live
 - Todoist blijft het taaksysteem — Koppelbaas signaleert alleen welke matches aandacht nodig hebben
 
+### Selectiebalk
+- Twee inklapknoppen: "Panelen" (dev-categorieën + kansen) en "Pipeline" (matchkaarten)
+- Reset-knop bij actieve selectie
+- Gewogen omzet voor geselecteerde ontwikkelaar
+
 ### Header & menu
 - Header: alerts knop → afspraken knop → verwacht knop → kaart knop → tandwiel-menu
 - Stats (devs/vrij) verplaatst naar paneltitels: "Ontwikkelaars (15)", "Kansen (2)"
@@ -86,7 +99,7 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Titelrij: ▸ Naam (count) [lock] [€] [●actie] [Badge]
 - Badge rechts in titelrij met stage.short (Match/Verkennend/Offerte/Werk)
 - Actie-indicator als gekleurde stip (12px): grijs=geen, groen=gepland, oranje=verlopen, rood=kritiek
-- € icoon altijd zichtbaar (met rode streep als waarde ontbreekt)
+- € icoon altijd grijs zichtbaar (met rode streep als waarde ontbreekt)
 - Actie-bolletje en € niet zichtbaar op actieve matches (Werk)
 - Slotje alleen zichtbaar als vergrendeld
 - BVO en functie samengevoegd op één regel: "BVO 5.000m² — Woningbouw"
@@ -98,13 +111,14 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
   - BVO × bouwkosten/m² × honorarium%
   - Aantal units × prijs per unit
   - Vast bedrag (direct invullen)
+- Calculator: geen re-render op oninput (inline DOM-update), confirm-dialoog pas op blur
 - Calculator opent automatisch als honorarium nog niet ingevuld is
 - Bureau-defaults in admin (€2.000/m², 4%) — gelden alleen voor nieuwe matches, bestaande matches worden niet gewijzigd
 - BVO sync: wijzigen van BVO op een kans werkt automatisch door naar alle matches voor die kans (alleen bvo-type, niet units/fixed)
-- Financieel overzicht: tabel-modal (klik op "verwacht" knop) voor snel inline bewerken van alle matches
+- Financieel overzicht: tabel-modal (820px breed, klik op "verwacht" knop) voor snel inline bewerken van alle matches
   - Bewerkbaar per rij: berekeningstype (BVO/Units/Vast), relevante velden, honorarium
   - Stage-groepskoppen met gekleurde achtergrond
-  - Live visuele feedback bij wijzigingen
+  - Live in-place DOM-update bij wijzigingen (geen re-render, keyboard blijft open)
 - Dev-omzet: bij selectie van een ontwikkelaar toont de selectiebalk het gewogen verwachte honorarium
 - Match-kaart € icoontje altijd zichtbaar (met rood streepje als honorarium ontbreekt)
 - Match-bewerkmodal: fase boven BVO/honorarium, rode labels bij lege verplichte velden (honorarium, volgende actie)
@@ -119,6 +133,8 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Rode/oranje rand op pins bij alert-status (te weinig koppelingen)
 - Popup bij klik: kansnaam, adres, stage-badge, BVO, alert-info, "Bewerk kans →"
 - Geocoding via Nominatim (gratis, 1 req/sec), coördinaten gecached in Firebase op kans-object (lat/lng)
+- Geocode fallback: als Nominatim adres niet vindt, retry zonder huisnummer
+- Status toont altijd "X/Y locatie(s) geladen"
 - Cache-invalidatie bij adreswijziging
 - Na bewerken kans vanuit kaart → terug naar kaart (ook via Escape)
 - Legenda met kleurbetekenis + alert-indicators
@@ -155,6 +171,13 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - Focus-restore in finEdit gebruikt nu `data-mid`/`data-fld` attributen i.p.v. waarde-matching
 - `asArr()` helper beschermt tegen Firebase array→object conversie in coals/links
 - `stageHistory` begrensd tot max 50 entries (`.slice(-49)` op alle 4 plekken)
+- Drag indicator verdwijnt niet meer bij hover (visibility:hidden + behoud laatste positie)
+- Keyboard sluit niet meer bij typen in financieel overzicht/calculator (in-place DOM-updates)
+- Honorarium confirm-dialoog pas op blur, niet per karakter
+- `_calcConfirmed`/`_origHonorium` toegevoegd in alle editMatch-paden (alertGoToMatch, stageGate)
+- Null check in finEdit totaalberekening (voorkom crash bij verwijderde match)
+- Toast "Opgeslagen" alleen bij daadwerkelijke wijzigingen
+- Chevrons vaste breedte (.chev class) — geen layout-shift bij in/uitklappen
 
 ## Security
 - Auth is client-side (localStorage flag), bewust eenvoudig gehouden
@@ -184,7 +207,8 @@ Acquisitie-dashboard voor architectenbureau ARD/AtelierRuimDenkers. Koppelt ontw
 - `/home/user/koppelbaas/index.html` — de volledige app
 - `/home/user/koppelbaas/functions/index.js` — iCal Cloud Function
 - `/home/user/koppelbaas/functions/package.json` — Cloud Function dependencies
-- `/home/user/koppelbaas/seed.html` — testdata loader
+- `/home/user/koppelbaas/seed.html` — testdata loader (met alle velden incl. lat/lng, features, nextAction)
+- `/home/user/koppelbaas/generate-icons.html` — PWA icoon generator (niet in gebruik)
 - `/home/user/koppelbaas/robots.txt` — zoekmachine-blokkering
 - `/home/user/koppelbaas/database.rules.json` — Firebase rules
 - `/home/user/koppelbaas/firebase.json` — hosting + functions config
