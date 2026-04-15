@@ -684,10 +684,12 @@ function showPanel(id) {
 }
 
 let _appEntered = false;
+let _sessionHash = '';
 function enterApp() {
   if (_appEntered) return;
   _appEntered = true;
   localStorage.setItem('kb_session', '1');
+  localStorage.setItem('kb_hash', _sessionHash || '');
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   applyTheme();
@@ -815,6 +817,7 @@ KB.handleLogin = async function() {
     }
     const hashed = await hashPassword(pw);
     if (hashed === stored) {
+      _sessionHash = hashed;
       enterApp();
     } else {
       document.getElementById('login-error').textContent = 'Onjuist wachtwoord.';
@@ -2802,6 +2805,8 @@ function setupEventListeners() {
             if (oldHash !== stored) { md.pwMsg = 'Huidig wachtwoord is onjuist.'; md.pwOk = false; renderModal(); return; }
             const newHash = await hashPassword(md.newPw);
             await db.ref('meta/passwordHash').set(newHash);
+            _sessionHash = newHash;
+            localStorage.setItem('kb_hash', newHash);
             md.pwMsg = 'Wachtwoord gewijzigd!'; md.pwOk = true;
             md.oldPw = ''; md.newPw = ''; md.newPw2 = '';
             renderModal();
@@ -2878,6 +2883,7 @@ function setupEventListeners() {
       }
       case 'logout':
         localStorage.removeItem('kb_session');
+        localStorage.removeItem('kb_hash');
         location.reload();
         break;
 
@@ -3913,11 +3919,34 @@ function setupEventListeners() {
   try { initFirebase(); } catch(e) { console.error('Firebase init:', e); }
 
   if (localStorage.getItem('kb_session') === '1' && db) {
-    try { enterApp(); } catch(e) {
-      console.error('EnterApp:', e);
-      localStorage.removeItem('kb_session');
-      KB.checkInitialState();
-    }
+    // Valideer of de opgeslagen hash nog klopt (wachtwoord kan gewijzigd zijn)
+    const savedHash = localStorage.getItem('kb_hash') || '';
+    db.ref('meta/passwordHash').once('value').then(snap => {
+      const currentHash = snap.val();
+      if (savedHash && currentHash && savedHash === currentHash) {
+        _sessionHash = savedHash;
+        try { enterApp(); } catch(e) {
+          console.error('EnterApp:', e);
+          localStorage.removeItem('kb_session');
+          localStorage.removeItem('kb_hash');
+          KB.checkInitialState();
+        }
+      } else {
+        // Hash klopt niet meer → uitloggen
+        localStorage.removeItem('kb_session');
+        localStorage.removeItem('kb_hash');
+        KB.checkInitialState();
+      }
+    }).catch(e => {
+      // Geen verbinding → laat toch door (offline tolerantie)
+      _sessionHash = savedHash;
+      try { enterApp(); } catch(e2) {
+        console.error('EnterApp:', e2);
+        localStorage.removeItem('kb_session');
+        localStorage.removeItem('kb_hash');
+        KB.checkInitialState();
+      }
+    });
   } else {
     KB.checkInitialState();
   }
