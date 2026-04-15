@@ -696,6 +696,16 @@ function enterApp() {
   setupListeners();
   setupEventListeners();
   setupConnectionMonitor();
+
+  // Realtime listener: log direct uit als wachtwoord elders gewijzigd wordt
+  db.ref('meta/passwordHash').on('value', snap => {
+    const current = snap.val();
+    if (_sessionHash && current && current !== _sessionHash) {
+      localStorage.removeItem('kb_session');
+      localStorage.removeItem('kb_hash');
+      location.reload();
+    }
+  });
 }
 
 // Bij opstarten: check of er een hash in Firebase staat
