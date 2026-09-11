@@ -599,26 +599,15 @@ KB.mobUnmatch = function(matchId) {
 function renderHeader(c, devs, kansen, matches, alarms) {
   const al = alarms.length;
   return `<div class="header">
-    <div class="header-left">
-      <div><div class="header-logo-ard">ARD</div><div class="header-logo-sub">ATELIERRUIMDENKERS</div></div>
-      <div class="header-div"></div>
-      <div><div class="header-title-label">Acquisitie</div><div class="header-title-name">Koppelbaas</div></div>
-    </div>
+    ${renderBrand('Acquisitie', 'Koppelbaas')}
     <div class="header-right">
       <button data-noprint title="Bekijk alerts" class="btn header-btn" style="background:${al>0?c.rood:(STATE.ui.dark?'#444':'#000')}" data-action="showAlerts"><span class="header-icon">${ico('alert',18)}</span> ${al} alert${al!==1?'s':''}</button>
       ${financialEnabled() ? (() => { const gw = matches.reduce((s,m) => s + (m.honorarium||0) * stagePct(m.stage) / 100, 0); return `<button data-noprint title="Financieel overzicht" class="btn header-btn" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showFinOverview"><span class="header-icon header-fin-label" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw)) : ico('banknote',16)}</span><span class="header-fin-full" style="font-size:13px">${gw > 0 ? fmtEuro(Math.round(gw))+' verwacht' : 'Financieel'}</span></button>`; })() : ''}
       ${actionEnabled() ? `<button data-noprint title="Afspraken-overzicht" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showActionOverview"><span class="header-icon">${ico('clock',18)}</span></button>` : ''}
       <button data-noprint title="Kaart" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="showMap"><span class="header-icon">${ico('map',18)}</span></button>
-      <div data-noprint style="position:relative">
-        <button title="Menu" class="btn header-btn header-btn-icon" style="background:${STATE.ui.dark?'#444':'#000'}" data-action="toggleHeaderMenu"><span class="header-icon">${ico('settings',18)}</span></button>
-        <div class="header-menu" style="display:${STATE.ui.headerMenu?'block':'none'};position:absolute;right:0;top:100%;margin-top:4px;background:${c.kaart};border:1px solid ${c.zachtgrijs};border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:200px;z-index:500;padding:4px 0">
-          ${[
-            {action:'showAdmin',icon:ico('settings',16),label:'Instellingen'},
-            {action:'print',icon:ico('printer',16),label:'Printen'},
-            {action:'toggleDark',icon:STATE.ui.dark?ico('sun',16):ico('moon',16),label:STATE.ui.dark?'Licht thema':'Donker thema'},
-            {action:'logout',icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',label:'Uitloggen',color:c.rood}
-          ].map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${i.color||c.txtPrimary};text-align:left" onmouseover="this.style.background='${c.lichtgrijs}'" onmouseout="this.style.background='none'" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
-        </div>
+      <div data-noprint>
+        ${renderHeaderMenu({ dark: STATE.ui.dark, menuOpen: STATE.ui.headerMenu, c,
+          extra: [{action:'showAdmin',icon:ico('settings',16),label:'Instellingen'}] })}
       </div>
     </div>
   </div>`;
@@ -1832,8 +1821,6 @@ function renderHelpModal(c) {
 
 function renderAdminModal(c) {
   const d = STATE.ui.modalData || {};
-  const pwMsg = d.pwMsg || '';
-  const pwOk = d.pwOk || false;
   const bkMsg = d.bkMsg || '';
   const bkOk = d.bkOk || false;
   const _toggle = (key, on) => `<button class="btn" style="position:relative;width:40px;height:22px;flex-shrink:0;border:none;background:${on?c.groen:c.zachtgrijs};padding:0;border-radius:11px;min-height:0;cursor:pointer" data-action="toggleFeature" data-id="${key}"><span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none"></span></button>`;
@@ -1919,14 +1906,6 @@ function renderAdminModal(c) {
       <div class="field" style="margin-bottom:6px"><textarea placeholder="Beschrijf het probleem of idee\u2026" style="font-size:12px;min-height:60px" oninput="KB.mf('fbMsg',this.value)">${esc(d.fbMsg||'')}</textarea></div>
       ${d.fbSent ? `<div style="font-size:11px;color:${c.groen};margin-bottom:6px">${esc(d.fbSent)}</div>` : ''}
       <button class="btn btn-black btn-sm" data-action="sendFeedback">Verstuur</button>
-    </div>
-    <div style="border-top:1px solid ${c.zachtgrijs};padding-top:14px;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${c.txtPrimary}">Wachtwoord</div>
-      <div class="field"><label>Huidig</label><input type="password" value="${esc(d.oldPw||'')}" oninput="KB.mf('oldPw',this.value)"></div>
-      <div class="field"><label>Nieuw</label><input type="password" value="${esc(d.newPw||'')}" oninput="KB.mf('newPw',this.value)"></div>
-      <div class="field"><label>Herhaal nieuw</label><input type="password" value="${esc(d.newPw2||'')}" oninput="KB.mf('newPw2',this.value)"></div>
-      ${pwMsg ? `<div style="font-size:11px;margin-bottom:8px;color:${pwOk?c.groen:c.rood}">${esc(pwMsg)}</div>` : ''}
-      <button class="btn btn-black btn-sm" style="margin-top:4px" data-action="changePassword">Wijzig wachtwoord</button>
     </div>
     `;
 }
@@ -2055,7 +2034,7 @@ KB.closeModal = function() {
   const _doClose = () => {
     if (returnEditMatch) { STATE.ui._returnToEditMatch = null; STATE.ui.modal = 'editMatch'; STATE.ui.modalData = returnEditMatch; STATE.ui.modalExtra = null; renderModal(); }
     else if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
-    else if (returnAdmin) { STATE.ui._returnToAdmin = false; STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null; renderModal(); }
+    else if (returnAdmin) { STATE.ui._returnToAdmin = false; STATE.ui.modal = 'admin'; STATE.ui.modalData = {pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null; renderModal(); }
     else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
   };
   if (STATE.ui.modalDirty) {
@@ -2409,6 +2388,7 @@ function setupEventListeners() {
         themeSetDark(STATE.ui.dark);
         applyTheme(); render(); break;
       case 'print': STATE.ui.headerMenu = false; render(); setTimeout(()=>window.print(),100); break;
+      case 'gotoApps': window.location.href = 'index.html'; break;
       case 'gotoKop': STATE.ui.headerMenu = false; window.location.href = 'inkopper.html'; break;
       case 'showAlerts':
         STATE.ui.modal = 'alerts'; STATE.ui.modalData = null; STATE.ui.modalExtra = null;
@@ -2434,35 +2414,11 @@ function setupEventListeners() {
       }
       case 'showAdmin':
         STATE.ui.headerMenu = false;
-        STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,
+        STATE.ui.modal = 'admin'; STATE.ui.modalData = {
           pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,
           def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,
           act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null;
         renderModal(); break;
-      case 'changePassword': {
-        (async () => {
-          const md = STATE.ui.modalData; if (!md) return;
-          if (!md.oldPw) { md.pwMsg = 'Voer huidig wachtwoord in.'; md.pwOk = false; renderModal(); return; }
-          if (!md.newPw || md.newPw.length < 8) { md.pwMsg = 'Nieuw wachtwoord: minimaal 8 tekens.'; md.pwOk = false; renderModal(); return; }
-          if (md.newPw !== md.newPw2) { md.pwMsg = 'Nieuwe wachtwoorden komen niet overeen.'; md.pwOk = false; renderModal(); return; }
-          try {
-            const user = auth && auth.currentUser;
-            if (!user) { md.pwMsg = 'Je bent niet meer ingelogd. Herlaad de pagina.'; md.pwOk = false; renderModal(); return; }
-            // Firebase eist een recente login voordat het wachtwoord mag wijzigen
-            const cred = firebase.auth.EmailAuthProvider.credential(user.email, md.oldPw);
-            await user.reauthenticateWithCredential(cred);
-            await user.updatePassword(md.newPw);
-            md.pwMsg = 'Wachtwoord gewijzigd!'; md.pwOk = true;
-            md.oldPw = ''; md.newPw = ''; md.newPw2 = '';
-            renderModal();
-          } catch(err) {
-            const wrong = err && (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential');
-            md.pwMsg = wrong ? 'Huidig wachtwoord is onjuist.' : authErrorText(err);
-            md.pwOk = false; renderModal();
-          }
-        })();
-        break;
-      }
       case 'saveStageKansen': {
         const md = STATE.ui.modalData; if (!md) break;
         const pcts = {matches:md.pct_matches||0,verkennend:md.pct_verkennend||0,offerte:md.pct_offerte||0,actief:md.pct_actief||0};
@@ -2937,7 +2893,7 @@ function setupEventListeners() {
         const returnAdmin = STATE.ui._returnToAdmin;
         const _doClose = () => {
           if (returnMap) { STATE.ui._returnToMap = false; STATE.ui.modal = 'map'; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); initMapModal(); }
-          else if (returnAdmin) { STATE.ui._returnToAdmin = false; STATE.ui.modal = 'admin'; STATE.ui.modalData = {oldPw:'',newPw:'',newPw2:'',pwMsg:'',pwOk:false,pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null; renderModal(); }
+          else if (returnAdmin) { STATE.ui._returnToAdmin = false; STATE.ui.modal = 'admin'; STATE.ui.modalData = {pct_matches:stagePct('matches'),pct_verkennend:stagePct('verkennend'),pct_offerte:stagePct('offerte'),pct_actief:stagePct('actief'),pctMsg:'',pctOk:false,def_bkm2:honDefaults().bkm2,def_honPct:honDefaults().honPct,honMsg:'',honOk:false,act_matches:actionDefaults().matches,act_verkennend:actionDefaults().verkennend,act_offerte:actionDefaults().offerte,act_actief:actionDefaults().actief,actMsg:'',actOk:false}; STATE.ui.modalExtra = null; renderModal(); }
           else { STATE.ui.modal = null; STATE.ui.modalData = null; STATE.ui.modalExtra = null; renderModal(); }
         };
         if (STATE.ui.modalDirty) {

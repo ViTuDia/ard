@@ -50,23 +50,7 @@
 
   <!-- App-keuze -->
   <div id="app">
-    <div class="header">
-      <div class="header-left">
-        <div>
-          <div class="header-logo-ard">ARD</div>
-          <div class="header-logo-sub">ATELIERRUIMDENKERS</div>
-        </div>
-        <div class="header-div"></div>
-        <div>
-          <div class="header-title-label">GEREEDSCHAP</div>
-          <div class="header-title-name">Kies een app</div>
-        </div>
-      </div>
-      <div class="header-right">
-        <button class="btn header-btn header-btn-icon btn-black" id="theme-btn" title="Thema wisselen"></button>
-        <button class="btn header-btn btn-black" onclick="logout()">Uitloggen</button>
-      </div>
-    </div>
+    <div id="shell"></div>
     <div class="router-body">
       <div class="router-inner">
         <div class="router-intro">Alle apps delen dezelfde login en database.</div>
@@ -78,14 +62,24 @@
       <span id="user-mail"></span>
     </div>
   </div>
+  <div id="modal-container"></div>
 
   <script>
 // ════════════════════════════════════════════════════
-// ARD — router: inloggen en doorverwijzen naar een app
+// ARD — router: inloggen, app-keuze en accountbeheer
 // ════════════════════════════════════════════════════
 
-let dark = themeIsDark();
+const R_STATE = {
+  dark: themeIsDark(),
+  headerMenu: false,
+  modal: null,          // null of 'password'
+  pw: { oud:'', nieuw:'', nieuw2:'', msg:'', ok:false }
+};
 
+function C() { return themePalette(R_STATE.dark); }
+function applyTheme() { applyPalette(C()); }
+
+// ─── Inloggen ───────────────────────────────────
 function showPanel(id) {
   ['login-mode','login-loading'].forEach(i => {
     const el = document.getElementById(i);
@@ -126,30 +120,122 @@ async function handleLogin() {
   }
 }
 
-function applyThemeBtn() {
-  const btn = document.getElementById('theme-btn');
-  btn.innerHTML = `<span class="header-icon">${ico(dark ? 'sun' : 'moon', 18)}</span>`;
-}
-
-function toggleDark() {
-  dark = !dark;
-  themeSetDark(dark);
-  applyPalette(themePalette(dark));
-  applyThemeBtn();
-}
-
-function showApps(user) {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('user-mail').textContent = user.email || '';
+// ─── Rendering ──────────────────────────────────
+function render() {
+  const c = C();
+  // Geen 'Alle apps' en geen printknop: je bent hier al, en er valt niets te printen
+  document.getElementById('shell').innerHTML = `<div class="header">
+    ${renderBrand('GEREEDSCHAP', 'Kies een app', { home: false })}
+    <div class="header-right">
+      ${renderHeaderMenu({ dark: R_STATE.dark, menuOpen: R_STATE.headerMenu, c, home: false, print: false,
+        extra: [{action:'showPassword',icon:ico('lock',16),label:'Wachtwoord wijzigen'}] })}
+    </div>
+  </div>`;
   document.getElementById('tiles').innerHTML = ARD_APPS.map(a =>
     `<a class="tile" href="${a.file}">
        <div class="tile-naam"><span class="slash">/</span>${esc(a.naam)}</div>
        <div class="tile-oms">${esc(a.omschrijving)}</div>
      </a>`
   ).join('');
-  applyPalette(themePalette(dark));
-  applyThemeBtn();
+  renderModal();
+}
+
+function renderModal() {
+  const wrap = document.getElementById('modal-container');
+  if (R_STATE.modal !== 'password') { wrap.innerHTML = ''; return; }
+  const c = C(), p = R_STATE.pw;
+  // Geen stopPropagation op de modal: de klik-afhandeling loopt via delegatie
+  // op document, en die zou daarmee geblokkeerd worden. Sluiten gebeurt alleen
+  // als de klik precies de overlay raakt (data-overlay), niet een kind ervan.
+  wrap.innerHTML = `<div class="modal-overlay" data-overlay="1">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-head">
+        <h3>Wachtwoord wijzigen</h3>
+        <button class="btn-icon" data-action="closeModal" style="font-size:18px">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field"><label>Huidig</label><input type="password" autocomplete="current-password" value="${esc(p.oud)}" oninput="R.pwField('oud',this.value)"></div>
+        <div class="field"><label>Nieuw</label><input type="password" autocomplete="new-password" value="${esc(p.nieuw)}" oninput="R.pwField('nieuw',this.value)"></div>
+        <div class="field"><label>Herhaal nieuw</label><input type="password" autocomplete="new-password" value="${esc(p.nieuw2)}" oninput="R.pwField('nieuw2',this.value)"></div>
+        ${p.msg ? `<div style="font-size:11px;margin-bottom:8px;color:${p.ok?c.groen:c.rood}">${esc(p.msg)}</div>` : ''}
+        <button class="btn btn-black btn-sm" style="margin-top:4px" data-action="changePassword">Wijzig wachtwoord</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Waarde bijhouden zonder opnieuw te tekenen, anders springt de cursor weg
+const R = {
+  pwField(key, val) { R_STATE.pw[key] = val; }
+};
+
+function showApps(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-mail').textContent = user.email || '';
+  applyTheme();
+  render();
+}
+
+// ─── Wachtwoord wijzigen ────────────────────────
+async function changePassword() {
+  const p = R_STATE.pw;
+  if (!p.oud) { p.msg = 'Voer huidig wachtwoord in.'; p.ok = false; renderModal(); return; }
+  if (!p.nieuw || p.nieuw.length < 8) { p.msg = 'Nieuw wachtwoord: minimaal 8 tekens.'; p.ok = false; renderModal(); return; }
+  if (p.nieuw !== p.nieuw2) { p.msg = 'Nieuwe wachtwoorden komen niet overeen.'; p.ok = false; renderModal(); return; }
+  try {
+    const user = auth && auth.currentUser;
+    if (!user) { p.msg = 'Je bent niet meer ingelogd. Herlaad de pagina.'; p.ok = false; renderModal(); return; }
+    // Firebase eist een recente login voordat het wachtwoord mag wijzigen
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, p.oud);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(p.nieuw);
+    p.msg = 'Wachtwoord gewijzigd!'; p.ok = true;
+    p.oud = ''; p.nieuw = ''; p.nieuw2 = '';
+    renderModal();
+  } catch(err) {
+    const wrong = err && (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential');
+    p.msg = wrong ? 'Huidig wachtwoord is onjuist.' : authErrorText(err);
+    p.ok = false; renderModal();
+  }
+}
+
+function setupEventListeners() {
+  document.addEventListener('click', e => {
+    // Klik naast de modal (op de overlay zelf) sluit hem
+    if (e.target.dataset && e.target.dataset.overlay) {
+      R_STATE.modal = null; renderModal(); return;
+    }
+
+    const el = e.target.closest('[data-action]');
+    const action = el ? el.dataset.action : null;
+
+    // Klik buiten het menu sluit het
+    if (R_STATE.headerMenu && action !== 'toggleHeaderMenu') { R_STATE.headerMenu = false; render(); }
+    if (!action) return;
+
+    switch(action) {
+      case 'toggleHeaderMenu':
+        R_STATE.headerMenu = !R_STATE.headerMenu; render(); break;
+      case 'toggleDark':
+        R_STATE.dark = !R_STATE.dark; R_STATE.headerMenu = false;
+        themeSetDark(R_STATE.dark); applyTheme(); render(); break;
+      case 'showPassword':
+        R_STATE.headerMenu = false;
+        R_STATE.pw = { oud:'', nieuw:'', nieuw2:'', msg:'', ok:false };
+        R_STATE.modal = 'password'; render(); break;
+      case 'closeModal':
+        R_STATE.modal = null; renderModal(); break;
+      case 'changePassword':
+        changePassword(); break;
+      case 'logout':
+        logout(); break;
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && R_STATE.modal) { R_STATE.modal = null; renderModal(); }
+  });
 }
 
 (function init() {
@@ -178,7 +264,7 @@ function showApps(user) {
       if (e.key === 'Enter') handleLogin();
     });
   });
-  document.getElementById('theme-btn').addEventListener('click', toggleDark);
+  setupEventListeners();
 })();
   </script>
 </body>

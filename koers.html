@@ -84,6 +84,8 @@ function setupEventListeners() {
         applyTheme(); render(); break;
       case 'print':
         KR_STATE.ui.headerMenu = false; render(); setTimeout(() => window.print(), 100); break;
+      case 'gotoApps':
+        window.location.href = 'index.html'; break;
       case 'logout':
         logout(); break;
     }

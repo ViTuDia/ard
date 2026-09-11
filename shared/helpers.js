@@ -19,34 +19,52 @@ function renderAppSwitcher(activeId) {
   ).join('') + '</div>';
 }
 
-// Gouden header met tandwiel-menu + app-switcher.
-// Zelfde opbouw als in Koppelbaas; die app heeft een eigen variant omdat
-// er meer knoppen in de header staan.
-function renderAppShell({ label, naam, appId, dark, menuOpen, c }) {
-  const items = [
-    {action:'print',icon:ico('printer',16),label:'Printen'},
-    {action:'toggleDark',icon:dark?ico('sun',16):ico('moon',16),label:dark?'Licht thema':'Donker thema'},
-    {action:'logout',icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',label:'Uitloggen',color:c.rood}
-  ];
-  return `<div class="header">
-    <div class="header-left">
-      <div>
+// Het ARD-blok linksboven. Klikbaar: brengt je terug naar het app-overzicht.
+// Op de router zelf wijst het nergens heen — daar ben je al.
+function renderBrand(label, naam, { home = true } = {}) {
+  const logo = `<div>
         <div class="header-logo-ard">ARD</div>
         <div class="header-logo-sub">ATELIERRUIMDENKERS</div>
-      </div>
+      </div>`;
+  return `<div class="header-left">
+      ${home ? `<a href="index.html" class="brand-home" title="Naar het app-overzicht">${logo}</a>` : logo}
       <div class="header-div"></div>
       <div>
         <div class="header-title-label">${esc(label)}</div>
         <div class="header-title-name">${esc(naam)}</div>
       </div>
-    </div>
-    <div class="header-right">
-      <div style="position:relative">
+    </div>`;
+}
+
+// Uitlog-icoon; zit niet in ico() omdat alleen de menu's het gebruiken
+const ICO_LOGOUT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+const ICO_GRID = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+
+// Het tandwiel-menu. `extra` komt bovenaan, boven de vaste items.
+function renderHeaderMenu({ dark, menuOpen, c, extra = [], print = true, home = true }) {
+  const items = [
+    ...extra,
+    ...(home ? [{action:'gotoApps',icon:ICO_GRID,label:'Alle apps'}] : []),
+    ...(print ? [{action:'print',icon:ico('printer',16),label:'Printen'}] : []),
+    {action:'toggleDark',icon:dark?ico('sun',16):ico('moon',16),label:dark?'Licht thema':'Donker thema'},
+    {action:'logout',icon:ICO_LOGOUT,label:'Uitloggen',color:c.rood}
+  ];
+  return `<div style="position:relative">
         <button title="Menu" class="btn header-btn header-btn-icon" style="background:${dark?'#444':'#000'}" data-action="toggleHeaderMenu"><span class="header-icon">${ico('settings',18)}</span></button>
         <div class="header-menu" style="display:${menuOpen?'block':'none'};position:absolute;right:0;top:100%;margin-top:4px;background:${c.kaart};border:1px solid ${c.zachtgrijs};border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:200px;z-index:500;padding:4px 0">
           ${items.map(i => `<button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit;color:${i.color||c.txtPrimary};text-align:left" onmouseover="this.style.background='${c.lichtgrijs}'" onmouseout="this.style.background='none'" data-action="${i.action}">${i.icon}<span>${i.label}</span></button>`).join('')}
         </div>
-      </div>
+      </div>`;
+}
+
+// Gouden header met tandwiel-menu + app-switcher.
+// Koppelbaas heeft een eigen variant omdat daar meer knoppen in de header staan,
+// maar gebruikt wel renderBrand() en renderHeaderMenu() hieronder.
+function renderAppShell({ label, naam, appId, dark, menuOpen, c, print = true }) {
+  return `<div class="header">
+    ${renderBrand(label, naam)}
+    <div class="header-right">
+      ${renderHeaderMenu({ dark, menuOpen, c, print })}
     </div>
   </div>` + renderAppSwitcher(appId);
 }
