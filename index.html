@@ -16,10 +16,12 @@
   <style>
     #app { display: none; flex-direction: column; min-height: 100vh; }
     .router-body { flex: 1; padding: 40px 24px; }
-    .router-inner { max-width: 760px; margin: 0 auto; }
-    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    /* Eén kolom, breed, en meeschalend: de tegels vullen de beschikbare
+       breedte tot 960px en krimpen daaronder mee met het venster. */
+    .router-inner { width: 100%; max-width: 960px; margin: 0 auto; }
+    .tiles { display: flex; flex-direction: column; gap: 14px; }
     .tile {
-      display: block; padding: 20px; border-radius: 6px; text-decoration: none;
+      display: block; width: 100%; padding: 22px 24px; border-radius: 6px; text-decoration: none;
       background: var(--kaart); border: 1px solid var(--kaartBorder); color: var(--txtPrimary);
       transition: border-color 0.15s, transform 0.15s;
     }
@@ -27,6 +29,10 @@
     .tile-naam { font-size: 17px; font-weight: 500; }
     .tile-naam .slash { color: var(--geel); margin-right: 6px; }
     .tile-oms { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 6px; }
+    @media (max-width: 767px) {
+      .router-body { padding: 20px 14px; }
+      .tile { padding: 18px 16px; }
+    }
   </style>
 </head>
 <body>
