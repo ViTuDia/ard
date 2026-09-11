@@ -182,7 +182,9 @@ function koersSubgroepen(areas) {
   const uit = [];
   const loop = (node, areaId, pad) => {
     const subs = node.subgroups || {};
-    Object.keys(subs).forEach(id => {
+    // Firebase geeft sleutels alfabetisch terug, dus zelf op order sorteren
+    const ids = Object.keys(subs).sort((a, b) => (subs[a].order || 0) - (subs[b].order || 0));
+    ids.forEach(id => {
       const s = subs[id];
       const heeftKinderen = !!(s.subgroups && Object.keys(s.subgroups).length);
       uit.push({ id, name: s.name, order: s.order || 0, areaId,
@@ -190,7 +192,9 @@ function koersSubgroepen(areas) {
       loop(s, areaId, pad.concat(s.name));
     });
   };
-  Object.keys(areas || {}).forEach(areaId => loop(areas[areaId], areaId, []));
+  const areaIds = Object.keys(areas || {})
+    .sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0));
+  areaIds.forEach(areaId => loop(areas[areaId], areaId, []));
   return uit;
 }
 
