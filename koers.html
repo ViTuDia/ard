@@ -9,78 +9,549 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <link rel="stylesheet" href="shared/theme.css?v=2">
-  <script src="shared/firebase.js?v=2"></script>
-  <script src="shared/theme.js?v=2"></script>
-  <script src="shared/helpers.js?v=2"></script>
-  <script src="shared/koers-model.js?v=2"></script>
+  <link rel="stylesheet" href="shared/theme.css?v=3">
+  <script src="shared/firebase.js?v=3"></script>
+  <script src="shared/theme.js?v=3"></script>
+  <script src="shared/helpers.js?v=3"></script>
+  <script src="shared/koers-model.js?v=3"></script>
   <style>
-    #app { display: none; flex-direction: column; min-height: 100vh; }
-    .app-body { flex: 1; padding: 40px 24px; }
-    .app-inner { max-width: 760px; margin: 0 auto; }
-    .nog-leeg {
-      padding: 40px 24px; text-align: center; border-radius: 6px;
-      border: 2px dashed var(--zachtgrijs); color: var(--txtSecondary);
-    }
-    .nog-leeg h2 { font-size: 18px; font-weight: 500; color: var(--txtPrimary); margin-bottom: 8px; }
-    .nog-leeg p { font-size: 13px; font-weight: 300; line-height: 1.6; }
+    /* ─── Schil ──────────────────────────────────────
+       Alleen het raster scrollt; toolbar, legenda en footer staan stil. */
+    #app { display: none; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 
-    /* Voorlopig overzicht van de indeling; de roadmap zelf komt in fase 3 */
-    .areas-lijst { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
-    .area-kaart {
-      background: var(--kaart); border: 1px solid var(--kaartBorder);
-      border-radius: 6px; padding: 14px 18px;
+    #kr-melding { display: none; padding: 10px 24px; font-size: 12px; font-weight: 300; color: var(--rood);
+                  background: var(--catHeaderBg); border-bottom: 1px solid var(--kaartBorder); }
+    #kr-melding.zicht { display: block; }
+
+    .kr-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 24px;
+                  background: var(--panelBg); border-bottom: 1px solid var(--kaartBorder); }
+    .kr-toolbar .btn { white-space: nowrap; }
+    .kr-toolbar-stat { margin-left: auto; font-size: 11px; font-weight: 300; color: var(--txtSecondary);
+                       text-align: right; }
+
+    /* ─── Het raster ─────────────────────────────────
+       Eén scroll-container met één grid erin: de linkerkolom en de drie
+       koprijen zijn sticky. Links en rechts zitten per rij in dezelfde
+       grid-row, dus uitlijnen kan niet fout gaan. De maanden zijn de
+       grid-kolommen — er wordt nergens met pixels gerekend om iets te
+       plaatsen. Maten staan als variabelen in CSS (ook voor mobiel en
+       print); JS leest ze met krMaten() en zet ze nooit. */
+    #kr-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg); }
+    #kr-grid {
+      --kr-left: 230px; --kr-col: 34px; --kr-bar: 20px; --kr-pad: 6px; --kr-gap: 4px;
+      --kr-h1: 22px; --kr-h2: 20px; --kr-h3: 18px; --kr-rowarea: 24px; --kr-rowsub: 26px;
+      display: grid; position: relative; width: max-content; min-width: 100%;
     }
-    .area-naam { font-size: 14px; font-weight: 500; }
-    .area-naam .nr { color: var(--geel); margin-right: 8px; }
-    .area-subs { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 8px; }
-    .sub-regel { padding: 2px 0; }
-    .sub-bullet { display: inline-block; width: 14px; color: var(--geel); }
-    .status-regel { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 18px; }
+
+    /* Koprijen: jaar, kwartaal, maand. De hoekcel staat in beide richtingen vast. */
+    .kr-hoek, .kr-jaar, .kr-kw, .kr-mnd { background: var(--panelBg); display: flex; align-items: center; }
+    .kr-hoek { grid-row: 1 / span 3; grid-column: 1; position: sticky; left: 0; top: 0; z-index: 7;
+               padding: 0 10px; font-size: 9px; font-weight: 500; letter-spacing: 1.5px;
+               text-transform: uppercase; color: var(--txtSecondary);
+               border-right: 1px solid var(--kaartBorder); border-bottom: 1px solid var(--zachtgrijs); }
+    .kr-jaar { position: sticky; top: 0; z-index: 6; justify-content: center;
+               font-size: 11px; font-weight: 500; letter-spacing: 2px; }
+    /* Het jaartal staat gecentreerd, maar blijft plakken zodra het jaar half
+       uit beeld scrollt — anders weet je bij meerdere jaren niet waar je bent. */
+    .kr-jaar span { position: sticky; left: calc(var(--kr-left) + 8px); }
+    .kr-kw   { position: sticky; top: var(--kr-h1); z-index: 6; justify-content: center;
+               font-size: 9px; font-weight: 400; color: var(--txtSecondary);
+               border-right: 1px solid var(--zachtgrijs); }
+    .kr-mnd  { position: sticky; top: calc(var(--kr-h1) + var(--kr-h2)); z-index: 6; justify-content: center;
+               font-size: 9px; font-weight: 300; color: var(--txtSecondary);
+               border-bottom: 1px solid var(--zachtgrijs); }
+    .kr-jgrens { border-left: 2px solid var(--zachtgrijs); }
+    .kr-mnd.kr-nu { color: var(--rood); font-weight: 500; border-bottom: 2px solid var(--rood); }
+
+    /* Linkerkolom */
+    .kr-l { grid-column: 1; position: sticky; left: 0; z-index: 5; display: flex; align-items: center;
+            gap: 6px; padding: 0 10px; overflow: hidden; background: var(--panelBg);
+            border-right: 1px solid var(--kaartBorder); }
+    .kr-l-area { background: var(--catHeaderBg); font-size: 10px; font-weight: 500; letter-spacing: .5px;
+                 text-transform: uppercase; cursor: pointer; }
+    .kr-l-area .nr { color: var(--geel); }
+    .kr-l-sub { font-size: 11px; font-weight: 300; border-bottom: 1px solid var(--lichtgrijs); }
+    .kr-l-sub.kr-tak { font-weight: 400; color: var(--txtSecondary); }
+    .kr-l-naam { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Rij-achtergrond met de rasterlijnen. Twee gradients in plaats van een
+       cel per maand, dus het hele grid blijft klein. */
+    .kr-rij { grid-column: 2 / -1; border-bottom: 1px solid var(--lichtgrijs);
+      background-image:
+        repeating-linear-gradient(to right, transparent 0, transparent calc(var(--kr-col) * 3 - 1px), var(--zachtgrijs) calc(var(--kr-col) * 3 - 1px), var(--zachtgrijs) calc(var(--kr-col) * 3)),
+        repeating-linear-gradient(to right, transparent 0, transparent calc(var(--kr-col) - 1px), var(--lichtgrijs) calc(var(--kr-col) - 1px), var(--lichtgrijs) var(--kr-col));
+    }
+    /* Dezelfde lijnen met de grijstint uit het palet gemengd — kwartaal
+       sterker dan maand. Kan een browser geen color-mix, dan blijft de
+       regel hierboven staan. */
+    @supports (background: color-mix(in srgb, red 50%, transparent)) {
+      .kr-rij {
+        background-image:
+          repeating-linear-gradient(to right, transparent 0, transparent calc(var(--kr-col) * 3 - 1px), color-mix(in srgb, var(--grijs) 50%, transparent) calc(var(--kr-col) * 3 - 1px), color-mix(in srgb, var(--grijs) 50%, transparent) calc(var(--kr-col) * 3)),
+          repeating-linear-gradient(to right, transparent 0, transparent calc(var(--kr-col) - 1px), color-mix(in srgb, var(--grijs) 20%, transparent) calc(var(--kr-col) - 1px), color-mix(in srgb, var(--grijs) 20%, transparent) var(--kr-col));
+      }
+    }
+    .kr-rij-area { background-color: var(--catHeaderBg); background-image: none; cursor: pointer; }
+    .kr-grens { border-top: 2px solid var(--zachtgrijs); }
+
+    /* Balken en stempels. Alles wat hier staat komt uit koersCellen(). */
+    .kr-bar { border-radius: 3px; font-size: 10px; line-height: 1; display: flex; align-items: center;
+              padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+              cursor: pointer; z-index: 1; }
+    /* In een flexbalk knipt text-overflow niet; de tekst heeft een eigen span nodig */
+    .kr-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kr-groen { background: var(--groen); color: var(--wit, #fff); }
+    .kr-half { border-radius: 3px 0 0 3px; }
+    .kr-door { background: linear-gradient(to right, var(--geel) 0%, var(--geel) 80%, transparent 100%);
+               color: var(--zwart, #000); border-radius: 3px 0 0 3px; }
+    .kr-stempel { border: 1px solid rgba(0,0,0,.25); }
+    .kr-k-geel { background: var(--geel); }
+    .kr-k-oranje { background: var(--oranje); }
+    .kr-k-roze { background: var(--roze); }
+    /* Verlaten doelmaand: gestreept en doorgestreept. De cel is meestal leeg,
+       dus de doorhaling is een pseudo-element en geen text-decoration. */
+    .kr-verlaten, .kr-k-grijs { border: 1px solid var(--grijs); border-radius: 3px;
+      background-image: repeating-linear-gradient(45deg, var(--grijs) 0 1px, transparent 1px 5px); }
+    .kr-verlaten { position: relative; z-index: 1; }
+    .kr-verlaten::after { content: ''; position: absolute; left: 2px; right: 2px; top: 50%;
+                          border-top: 1px solid var(--grijs); }
+    /* Prioriteit vóór kr-open, zodat de rode alarmrand het overneemt */
+    .kr-prio { border: 2px solid var(--txtPrimary); font-weight: 500; }
+    .kr-open { border: 2px solid var(--rood); }
+    .kr-pijl { align-self: start; display: flex; align-items: center; justify-content: center;
+               color: var(--txtPrimary); pointer-events: none; z-index: 1; }
+    /* Titel buiten de balk: in een stempel van één maand past geen tekst.
+       pointer-events uit, zodat de cellen eronder bruikbaar blijven. */
+    .kr-titel { align-self: start; display: flex; align-items: center; padding-left: 5px;
+                font-size: 10px; font-weight: 300; color: var(--txtSecondary);
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                pointer-events: none; z-index: 1; }
+    .kr-rollup { align-self: center; height: 16px; display: flex; align-items: center; gap: 4px;
+                 padding: 0 6px; border: 1px solid var(--grijs); border-radius: 3px;
+                 font-size: 9px; font-style: italic; color: var(--txtSecondary); z-index: 1;
+                 background-image: repeating-linear-gradient(45deg, var(--grijs) 0 1px, transparent 1px 6px); }
+    .kr-nu-lijn { position: absolute; width: 2px; background: var(--rood); z-index: 3; pointer-events: none; }
+    .kr-leeg { grid-column: 2 / -1; display: flex; align-items: center; padding: 0 14px;
+               font-size: 11px; font-weight: 300; color: var(--txtSecondary); }
+
+    /* ─── Legenda ────────────────────────────────────
+       Gegenereerd uit KOERS_STATUS, dus nooit te hardcoden. */
+    #kr-legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 8px 24px;
+                  background: var(--panelBg); border-top: 1px solid var(--kaartBorder);
+                  font-size: 10px; font-weight: 300; color: var(--txtSecondary); }
+    .kr-leg { display: flex; align-items: center; gap: 5px; }
+    .kr-swatch { width: 16px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ─── Mobiel ─────────────────────────────────── */
+    @media (max-width: 767px) {
+      #kr-grid { --kr-left: 124px; --kr-col: 26px; --kr-bar: 18px; --kr-pad: 5px; --kr-gap: 3px;
+                 --kr-h1: 18px; --kr-h2: 16px; --kr-h3: 16px; --kr-rowarea: 22px; --kr-rowsub: 24px; }
+      .kr-toolbar { padding: 6px 12px; }
+      #kr-legenda { padding: 6px 12px; gap: 10px; font-size: 9px; }
+      #kr-melding { padding: 8px 12px; }
+    }
+
+    /* ─── Print ──────────────────────────────────── */
+    @page { size: landscape; margin: 0; }
+    @media print {
+      html, body, #app { height: auto !important; overflow: visible !important; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #kr-scroll { overflow: visible !important; flex: none !important; }
+      #kr-grid { --kr-left: 200px; --kr-col: 24px; }
+      /* sticky en printen is gokken; in print staat alles gewoon stil */
+      .kr-hoek, .kr-jaar, .kr-kw, .kr-mnd, .kr-l { position: static !important; }
+      .kr-toolbar { display: none !important; }
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="shell"></div>
-    <div class="app-body">
-      <div class="app-inner">
-        <div class="nog-leeg">
-          <h2>De indeling staat</h2>
-          <p>Dit zijn de gebieden waar je doelen straks onder hangen.<br>
-             De roadmap zelf — balken, maanden, statussen — komt in de volgende fase.</p>
-        </div>
-        <div class="areas-lijst" id="areas-lijst"></div>
-        <div class="status-regel" id="status-regel"></div>
-      </div>
-    </div>
+    <div id="kr-melding"></div>
+    <div id="kr-scroll"><div id="kr-grid"></div></div>
+    <div id="kr-legenda"></div>
     <div class="footer">
       <span>ARD <span style="color:var(--geel)">/</span> AtelierRuimDenkers</span>
       <span>Koers</span>
     </div>
+    <div id="kr-modal"></div>
     <div id="toast" class="toast"></div>
   </div>
 
   <script>
 // ════════════════════════════════════════════════════
 // KOERS — ARD / AtelierRuimDenkers
-// Strategische kwartaaldoelen. Nu nog een schil; de inhoud volgt.
+// Strategische kwartaaldoelen op een roadmap.
+//
+// De tekenregels staan NIET hier maar in shared/koers-model.js:
+// koersCellen() zegt per doel welke cellen er zijn (groene aanloop, één
+// stempel, een verlaten maand) en dit bestand zet dat om in grid-items.
 // ════════════════════════════════════════════════════
 
 const KR = {};
 
+// Eén datum per sessie: elke render is consistent, en bij testen hoef je
+// niet aan de systeemklok te zitten.
+const KR_VANDAAG = new Date();
+const KR_MND = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+const KR_PIJL = '<svg width="14" height="14" viewBox="0 0 18 20" fill="currentColor"><path d="M2 4 L16 10 L2 16 Z"/></svg>';
+
 const KR_STATE = {
-  ui: { dark: themeIsDark(), headerMenu: false },
-  data: { areas: {}, goals: {} }
+  ui: {
+    dark: themeIsDark(), headerMenu: false,
+    collapsedAreas: {},
+    naarVandaagGedaan: false,
+    melding: ''
+  },
+  data: { areas: {}, goals: {}, settings: {} }
 };
 
 function C() { return themePalette(KR_STATE.ui.dark); }
 function applyTheme() { applyPalette(C()); }
 
-function render() {
-  document.getElementById('shell').innerHTML = renderAppShell({
-    label: 'STRATEGIE', naam: 'Koers', appId: 'koers',
-    dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c: C()
+// ─── Maten ──────────────────────────────────────
+// De stylesheet is de enige bron (ook voor mobiel en print); hier lezen we
+// alleen. Zo klopt het rekenwerk ook na een rotatie.
+function krMaten() {
+  const s = getComputedStyle(document.getElementById('kr-grid'));
+  const p = k => parseInt(s.getPropertyValue('--kr-' + k), 10) || 0;
+  return { left:p('left'), col:p('col'), bar:p('bar'), pad:p('pad'), gap:p('gap'),
+           h1:p('h1'), h2:p('h2'), h3:p('h3'), rowarea:p('rowarea'), rowsub:p('rowsub') };
+}
+
+// ─── De tijdas ──────────────────────────────────
+// Hele jaren, zodat de kwartaalkoppen kloppen. Altijd dit jaar én volgend
+// jaar: je kunt niet plannen in een jaar dat niet getekend is. completedAt
+// telt mee, want een oranje stempel kan buiten [start,eind] vallen.
+function krAs() {
+  const nu = maandNr(huidigeMaand(KR_VANDAAG));
+  const jNu = Math.floor(nu / 12);
+  let min = jNu, max = jNu + 1;
+  objToArr(KR_STATE.data.goals).forEach(g => {
+    [g.startMonth, g.endMonth, g.completedAt].forEach(m => {
+      const nr = maandNr(m);
+      if (nr == null) return;
+      const j = Math.floor(nr / 12);
+      if (j < min) min = j;
+      if (j > max) max = j;
+    });
   });
+  const van = min * 12, tot = max * 12 + 11;
+  return { van, tot, n: tot - van + 1, nu };
+}
+
+// ─── Rijen ──────────────────────────────────────
+// Één platte lijst voor links én rechts. Een ingeklapt gebied levert geen
+// subgroeprijen; daar komt in plaats daarvan een samenvatbalk.
+function krRijen() {
+  const areas = KR_STATE.data.areas;
+  const rijen = [];
+  Object.keys(areas)
+    .sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0))
+    .forEach((areaId, i) => {
+      const a = areas[areaId] || {};
+      const dicht = !!KR_STATE.ui.collapsedAreas[areaId];
+      rijen.push({ type:'area', areaId, name:a.name || areaId, order:a.order || '', dicht, eerste:i === 0 });
+      if (dicht) return;
+      koersSubgroepen({ [areaId]: a }).forEach(sub => {
+        rijen.push({ type:'sub', areaId, sgId:sub.id, name:sub.name,
+                     diepte:Math.max(0, sub.pad.length - 1), leaf:sub.leaf });
+      });
+    });
+  return rijen;
+}
+
+// ─── Doelen naar cellen ─────────────────────────
+// Bezette maandreeks van één doel: alles wat getekend wordt, dus inclusief
+// een stempel ná de doelmaand en de prioriteitspijl in de kolom erna.
+function krSpan(goal) {
+  if (!goal) return null;
+  const cel = koersCellen(goal, KR_VANDAAG);
+  const s = {
+    goal, cel,
+    groenVan: cel.groen ? maandNr(cel.groen[0]) : null,
+    groenTot: cel.groen ? maandNr(cel.groen[1]) : null,
+    stempel: cel.stempel ? maandNr(cel.stempel.maand) : null,
+    verlaten: cel.verlaten ? maandNr(cel.verlaten) : null
+  };
+  const nrs = [s.groenVan, s.groenTot, s.stempel, s.verlaten].filter(n => n != null);
+  if (!nrs.length) return null;
+  s.van = Math.min.apply(null, nrs);
+  s.tot = Math.max.apply(null, nrs);
+  s.totMetPijl = s.tot + (goal.isPriority ? 1 : 0);
+  return s;
+}
+
+// Banen: het eerste spoor waarin dit doel niet botst. Zonder dit verbergt
+// de bovenste balk de onderste volledig, inclusief de klik.
+// Zet ook vrijTot — tot waar de titel naast het doel mag doorlopen.
+function krBanen(spans) {
+  const bezetTot = [], laatste = [];
+  spans.forEach(s => {
+    let b = bezetTot.findIndex(t => t < s.van);
+    if (b === -1) { b = bezetTot.length; bezetTot.push(-Infinity); }
+    bezetTot[b] = s.totMetPijl;
+    if (laatste[b]) laatste[b].vrijTot = s.van - 1;
+    laatste[b] = s;
+    s.baan = b;
+  });
+  laatste.forEach(s => { if (s.vrijTot == null) s.vrijTot = Infinity; });
+  return Math.max(1, bezetTot.length);
+}
+
+// Alle doelen gegroepeerd per subgroep, met banen toegewezen.
+function krDoelenPerSub() {
+  const per = {};
+  objToArr(KR_STATE.data.goals).forEach(g => {
+    const s = krSpan(g);
+    if (!s) return;
+    (per[g.subgroupId] = per[g.subgroupId] || []).push(s);
+  });
+  Object.keys(per).forEach(sg => {
+    per[sg].sort((a, b) => a.van - b.van || a.tot - b.tot);
+    per[sg].banen = krBanen(per[sg]);
+  });
+  return per;
+}
+
+function krRijHoogte(rij, per, m) {
+  if (rij.type === 'area') return m.rowarea;
+  if (!rij.leaf) return m.rowsub;
+  const banen = (per[rij.sgId] && per[rij.sgId].banen) || 1;
+  return 2 * m.pad + banen * m.bar + (banen - 1) * m.gap;
+}
+
+// Samenvatting van een ingeklapt gebied
+function krRollup(areaId, per) {
+  const area = KR_STATE.data.areas[areaId];
+  if (!area) return null;
+  let van = null, tot = null, aantal = 0, prio = 0;
+  koersLeafSubgroepen({ [areaId]: area }).forEach(sub => {
+    (per[sub.id] || []).forEach(s => {
+      aantal++;
+      if (s.goal.isPriority) prio++;
+      if (van == null || s.van < van) van = s.van;
+      if (tot == null || s.tot > tot) tot = s.tot;
+    });
+  });
+  return aantal ? { van, tot, aantal, prio } : null;
+}
+
+// ─── Tekenen ────────────────────────────────────
+function renderRaster() {
+  const grid = document.getElementById('kr-grid');
+  const scroll = document.getElementById('kr-scroll');
+  const sl = scroll.scrollLeft, st = scroll.scrollTop;
+
+  const m = krMaten();
+  const as = krAs();
+  const rijen = krRijen();
+  const per = krDoelenPerSub();
+  const kol = nr => 2 + (nr - as.van);
+
+  let html = krKopHtml(as);
+  const hoogtes = [];
+  rijen.forEach((rij, i) => {
+    const rijNr = 4 + i;
+    hoogtes.push(krRijHoogte(rij, per, m));
+    html += krLinkerCel(rij, rijNr);
+    html += krRijAchtergrond(rij, rijNr);
+    if (rij.type === 'area') {
+      if (rij.dicht) {
+        const r = krRollup(rij.areaId, per);
+        if (r) {
+          const van = Math.max(r.van, as.van), tot = Math.min(r.tot, as.tot);
+          if (tot >= van) {
+            html += `<div class="kr-rollup" style="grid-row:${rijNr};grid-column:${kol(van)}/span ${tot - van + 1}">`
+                  + `${r.aantal} ${r.aantal === 1 ? 'doel' : 'doelen'}${r.prio ? ' · ' + r.prio + ' ▸' : ''}</div>`;
+          }
+        }
+      }
+      return;
+    }
+    if (!rij.leaf) return;
+    (per[rij.sgId] || []).forEach(s => { html += krDoelHtml(s, rijNr, as, m); });
+  });
+
+  if (!rijen.length) {
+    hoogtes.push(m.rowsub * 2);
+    html += `<div class="kr-leeg" style="grid-row:4">`
+          + (KR_STATE.ui.melding ? 'Geen indeling geladen.' : 'Nog geen gebieden.') + `</div>`;
+  }
+
+  html += krVandaagLijn(as);
+
+  grid.style.gridTemplateColumns = `var(--kr-left) repeat(${as.n}, var(--kr-col)) var(--kr-col)`;
+  grid.style.gridTemplateRows = ['var(--kr-h1)', 'var(--kr-h2)', 'var(--kr-h3)']
+    .concat(hoogtes.map(h => h + 'px')).join(' ');
+  grid.innerHTML = html;
+
+  scroll.scrollLeft = sl; scroll.scrollTop = st;
+  if (!KR_STATE.ui.naarVandaagGedaan && rijen.length) krScrollNaarVandaag();
+}
+
+function krKopHtml(as) {
+  let h = `<div class="kr-hoek">Gebieden</div>`;
+  const jVan = Math.floor(as.van / 12), jTot = Math.floor(as.tot / 12);
+  for (let j = jVan; j <= jTot; j++) {
+    const k = 2 + (j * 12 - as.van);
+    h += `<div class="kr-jaar${j > jVan ? ' kr-jgrens' : ''}" style="grid-row:1;grid-column:${k}/span 12"><span>${j}</span></div>`;
+    for (let q = 0; q < 4; q++) {
+      h += `<div class="kr-kw" style="grid-row:2;grid-column:${k + q * 3}/span 3">Q${q + 1}</div>`;
+    }
+    for (let mn = 0; mn < 12; mn++) {
+      const nr = j * 12 + mn;
+      h += `<div class="kr-mnd${nr === as.nu ? ' kr-nu' : ''}" style="grid-row:3;grid-column:${k + mn}">${KR_MND[mn]}</div>`;
+    }
+  }
+  return h;
+}
+
+function krLinkerCel(rij, rijNr) {
+  if (rij.type === 'area') {
+    const chev = rij.dicht ? '▸' : '▾';
+    return `<div class="kr-l kr-l-area${rij.eerste ? '' : ' kr-grens'}" style="grid-row:${rijNr}"`
+         + ` data-action="toggleArea" data-area="${esc(rij.areaId)}" title="In- of uitklappen">`
+         + `<span class="chev">${chev}</span>`
+         + `<span class="kr-l-naam"><span class="nr">${esc(String(rij.order))}</span> ${esc(rij.name)}</span></div>`;
+  }
+  return `<div class="kr-l kr-l-sub${rij.leaf ? '' : ' kr-tak'}"`
+       + ` style="grid-row:${rijNr};padding-left:${10 + rij.diepte * 14}px">`
+       + `<span class="kr-l-naam">${esc(rij.name)}</span></div>`;
+}
+
+function krRijAchtergrond(rij, rijNr) {
+  if (rij.type === 'area') {
+    return `<div class="kr-rij kr-rij-area${rij.eerste ? '' : ' kr-grens'}" style="grid-row:${rijNr}"`
+         + ` data-action="toggleArea" data-area="${esc(rij.areaId)}"></div>`;
+  }
+  return `<div class="kr-rij" style="grid-row:${rijNr}"${rij.leaf ? ` data-sg="${esc(rij.sgId)}"` : ''}></div>`;
+}
+
+// Eén doel: groene aanloop (of de doorlopende balk), de stempel, de
+// verlaten maand, de prioriteitspijl en — als het niet in de balk past —
+// de titel in de vrije kolommen erna.
+function krDoelHtml(s, rijNr, as, m) {
+  const g = s.goal, cel = s.cel;
+  const kol = nr => 2 + (nr - as.van);
+  const zicht = nr => nr != null && nr >= as.van && nr <= as.tot;
+  const top = m.pad + s.baan * (m.bar + m.gap);
+  const basis = `grid-row:${rijNr};align-self:start;margin-top:${top}px;height:${m.bar}px`;
+  const titel = esc(g.title || '(zonder titel)');
+  const klik = ` data-action="openDoel" data-id="${esc(g.id)}" title="${titel}"`;
+  let h = '', titelIn = false;
+
+  if (s.groenVan != null && s.groenTot != null && s.groenTot >= s.groenVan) {
+    const van = Math.max(s.groenVan, as.van), tot = Math.min(s.groenTot, as.tot);
+    if (tot >= van) {
+      const breed = tot - van + 1;
+      titelIn = breed >= 3;
+      // Geen stempel (doorlopend) maar wel prioriteit? Dan krijgt de balk de rand
+      const prioBar = (!zicht(s.stempel) && g.isPriority) ? ' kr-prio' : '';
+      const soort = (cel.doorlopend ? 'kr-door'
+        : 'kr-groen' + (s.stempel === s.groenTot + 1 ? ' kr-half' : '')) + prioBar;
+      h += `<div class="kr-bar ${soort}" style="${basis};grid-column:${kol(van)}/span ${breed}"${klik}>`
+         + (titelIn ? `<span class="kr-lbl">${titel}${cel.doorlopend ? ' →' : ''}</span>` : '') + `</div>`;
+    }
+  }
+
+  if (zicht(s.stempel)) {
+    const rand = (cel.stempel.rand === 'rood' ? ' kr-open' : '');
+    const prio = (g.isPriority ? ' kr-prio' : '');
+    h += `<div class="kr-bar kr-stempel kr-k-${esc(cel.stempel.kleur)}${prio}${rand}"`
+       + ` style="${basis};grid-column:${kol(s.stempel)}/span 1"${klik}></div>`;
+  }
+
+  if (zicht(s.verlaten)) {
+    h += `<div class="kr-verlaten" style="${basis};grid-column:${kol(s.verlaten)}/span 1"`
+       + ` data-action="openDoel" data-id="${esc(g.id)}" title="Geplande maand die niet leverde"></div>`;
+  }
+
+  if (g.isPriority && s.tot + 1 <= as.tot + 1) {
+    h += `<div class="kr-pijl" style="${basis};grid-column:${kol(s.tot + 1)}/span 1">${KR_PIJL}</div>`;
+  }
+
+  if (!titelIn) {
+    const start = s.tot + 1 + (g.isPriority ? 1 : 0);
+    const eind = Math.min(s.vrijTot == null || s.vrijTot === Infinity ? as.tot : s.vrijTot, as.tot);
+    // Eén kolom (34px) leest als een fout; dan liever niets — de balk heeft een tooltip
+    if (eind - start >= 1) {
+      h += `<div class="kr-titel" style="${basis};grid-column:${kol(start)}/span ${eind - start + 1}">`
+         + `<span class="kr-lbl">${titel}</span></div>`;
+    }
+  }
+  return h;
+}
+
+function krVandaagLijn(as) {
+  const d = KR_VANDAAG;
+  const dagen = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const x = (as.nu - as.van) + (d.getDate() - 1) / dagen;
+  return `<div class="kr-nu-lijn" style="left:calc(var(--kr-left) + var(--kr-col) * ${x.toFixed(3)});`
+       + `top:calc(var(--kr-h1) + var(--kr-h2) + var(--kr-h3));bottom:0"></div>`;
+}
+
+function krScrollNaarVandaag(force) {
+  const scroll = document.getElementById('kr-scroll');
+  const m = krMaten(), as = krAs();
+  scroll.scrollLeft = Math.max(0, (as.nu - as.van - 2) * m.col);
+  if (!force) KR_STATE.ui.naarVandaagGedaan = true;
+}
+
+// ─── Legenda ────────────────────────────────────
+// Uit het model, plus de twee dingen die geen status zijn: de groene aanloop
+// en de prioriteitspijl. 'Verschoven / uitgelopen' dekt de grijze cel al —
+// die staat er bij een uitgelopen doel om dezelfde reden.
+function renderLegenda() {
+  const item = (klass, label) => `<span class="kr-leg"><span class="kr-swatch ${klass}"></span>${esc(label)}</span>`;
+  let h = item('kr-groen', 'Voorbereiding');
+  Object.keys(KOERS_STATUS).forEach(k => {
+    const st = KOERS_STATUS[k];
+    h += item('kr-k-' + st.kleur + (k === 'doorlopend' ? ' kr-door' : ''), st.label);
+  });
+  h += item('kr-k-' + KOERS_BESLISSING_OPEN.kleur + ' kr-open', KOERS_BESLISSING_OPEN.label);
+  h += `<span class="kr-leg">${KR_PIJL}Prioriteit</span>`;
+  return h;
+}
+
+// ─── Schil ──────────────────────────────────────
+function renderHeader(c) {
+  return `<div class="header">
+    ${renderBrand('STRATEGIE', 'Koers')}
+    <div class="header-right">
+      ${renderHeaderMenu({ dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c })}
+    </div>
+  </div>` + renderAppSwitcher('koers') + renderToolbar();
+}
+
+function renderToolbar() {
+  const goals = objToArr(KR_STATE.data.goals);
+  const open = goals.filter(g => koersStatus(g, KR_VANDAAG) === 'beslissing-open').length;
+  return `<div class="kr-toolbar" data-noprint>
+    <button class="btn btn-xs btn-grey" data-action="allesUit">Alles uit</button>
+    <button class="btn btn-xs btn-grey" data-action="allesIn">Alles in</button>
+    <button class="btn btn-xs btn-grey" data-action="naarVandaag">← Vandaag</button>
+    <span class="kr-toolbar-stat">${goals.length} ${goals.length === 1 ? 'doel' : 'doelen'}`
+    + (open ? ` · <span style="color:var(--rood)">${open} open beslissing${open === 1 ? '' : 'en'}</span>` : '')
+    + `</span>
+  </div>`;
+}
+
+function render() {
+  document.getElementById('shell').innerHTML = renderHeader(C());
+  renderRaster();
+  document.getElementById('kr-legenda').innerHTML = renderLegenda();
+  const mld = document.getElementById('kr-melding');
+  mld.textContent = KR_STATE.ui.melding;
+  mld.classList.toggle('zicht', !!KR_STATE.ui.melding);
+}
+
+// Alles wat van buiten komt (drie Firebase-listeners) gaat hierlangs, zodat
+// gelijktijdige updates één render geven in plaats van drie.
+let _krRaf = null;
+function renderVeilig() {
+  if (_krRaf) return;
+  _krRaf = requestAnimationFrame(() => { _krRaf = null; render(); });
 }
 
 function setupEventListeners() {
@@ -105,8 +576,25 @@ function setupEventListeners() {
         window.location.href = 'index.html'; break;
       case 'logout':
         logout(); break;
+      case 'toggleArea':
+        krZetInklap(el.dataset.area); break;
+      case 'allesIn':
+        KR_STATE.ui.collapsedAreas = {}; render(); break;
+      case 'allesUit':
+        Object.keys(KR_STATE.data.areas).forEach(id => { KR_STATE.ui.collapsedAreas[id] = true; });
+        render(); break;
+      case 'naarVandaag':
+        krScrollNaarVandaag(true); break;
     }
   });
+  window.addEventListener('resize', renderVeilig);
+}
+
+function krZetInklap(areaId) {
+  if (!areaId) return;
+  if (KR_STATE.ui.collapsedAreas[areaId]) delete KR_STATE.ui.collapsedAreas[areaId];
+  else KR_STATE.ui.collapsedAreas[areaId] = true;
+  render();
 }
 
 // ─── Data ───────────────────────────────────────
@@ -123,35 +611,12 @@ async function seedIndienNodig() {
 function luisterNaarData() {
   db.ref('koers/areas').on('value', snap => {
     KR_STATE.data.areas = snap.val() || {};
-    renderAreas();
+    renderVeilig();
   });
   db.ref('koers/goals').on('value', snap => {
     KR_STATE.data.goals = snap.val() || {};
-    renderAreas();
+    renderVeilig();
   });
-}
-
-function renderAreas() {
-  const areas = KR_STATE.data.areas;
-  const ids = Object.keys(areas).sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0));
-  document.getElementById('areas-lijst').innerHTML = ids.map(id => {
-    const a = areas[id];
-    // Inspringen per niveau: met drie keer 'Ongoing' zegt een platte rij niets
-    const regels = koersSubgroepen({ [id]: a }).map(sub =>
-      `<div class="sub-regel" style="padding-left:${(sub.pad.length - 1) * 18}px">
-         <span class="sub-bullet">${sub.leaf ? '\u00B7' : '\u25B8'}</span>${esc(sub.name)}
-       </div>`).join('');
-    return `<div class="area-kaart">
-      <div class="area-naam"><span class="nr">${a.order || ''}</span>${esc(a.name)}</div>
-      <div class="area-subs">${regels || 'geen subgroepen'}</div>
-    </div>`;
-  }).join('');
-
-  const aantalDoelen = Object.keys(KR_STATE.data.goals).length;
-  const bladeren = koersLeafSubgroepen(areas).length;
-  document.getElementById('status-regel').textContent =
-    `${ids.length} gebieden, ${bladeren} subgroepen waar doelen aan kunnen hangen, ` +
-    `${aantalDoelen} ${aantalDoelen === 1 ? 'doel' : 'doelen'}.`;
 }
 
 (function init() {
@@ -166,10 +631,10 @@ function renderAreas() {
       luisterNaarData();
     } catch (e) {
       console.error('Koers-data:', e);
-      const uitleg = (e && e.code === 'PERMISSION_DENIED')
+      KR_STATE.ui.melding = (e && e.code === 'PERMISSION_DENIED')
         ? 'Geen toegang tot /koers. Staat de koers-regel al in de Firebase-rules?'
         : 'Kon de indeling niet laden: ' + (e.message || e);
-      document.getElementById('status-regel').textContent = uitleg;
+      render();
     }
   });
 })();
