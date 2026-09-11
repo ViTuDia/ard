@@ -454,6 +454,17 @@
     });
   });
 
+  // Escape voor gebruik in innerHTML
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  // WP levert namen en titels als gerenderde HTML (met entiteiten zoals &#8217;).
+  // DOMParser decodeert die zonder scripts uit te voeren of afbeeldingen te laden,
+  // zodat het resultaat veilig door esc() kan.
+  function wpText(s) {
+    if (s == null) return '';
+    return new DOMParser().parseFromString(String(s), 'text/html').documentElement.textContent || '';
+  }
+
   // ─── Theme ─────────────────────────────────────────────────────────────────
   const themeBtn = document.getElementById('themeBtn');
   const sunSVG  = '<span class="header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>';
@@ -598,7 +609,7 @@
       if (!Array.isArray(cats) || cats.length === 0) throw new Error('Lege lijst');
       const lastId = parseInt(localStorage.getItem('kop_lastCategoryId') || '1', 10);
       catEl.innerHTML = cats.map(c =>
-        '<option value="' + c.id + '" data-slug="' + (c.slug || '') + '"' + (c.id === lastId ? ' selected' : '') + '>' + c.name + '</option>'
+        '<option value="' + esc(c.id) + '" data-slug="' + esc(c.slug || '') + '"' + (c.id === lastId ? ' selected' : '') + '>' + esc(wpText(c.name)) + '</option>'
       ).join('');
       catStatus.textContent = cats.length + ' categorieën';
       catStatus.className = 'counter ok';
@@ -835,9 +846,9 @@
         const d = new Date(p.date);
         const dateLbl = d.toLocaleDateString('nl-NL', {day:'2-digit',month:'2-digit',year:'2-digit'});
         const statusLbl = p.status === 'draft' ? ' (concept)' : '';
-        const title = p.title?.rendered || '(zonder titel)';
+        const title = wpText(p.title?.rendered) || '(zonder titel)';
         const label = dateLbl + statusLbl + ' — ' + title;
-        opts.push('<option value="' + p.id + '">' + label.replace(/"/g,'&quot;') + '</option>');
+        opts.push('<option value="' + esc(p.id) + '">' + esc(label) + '</option>');
       });
       editSelect.innerHTML = opts.join('');
       editStatus.textContent = useAuth ? posts.length + ' recente posts' : 'Laatste publish';
