@@ -33,7 +33,9 @@
     }
     .area-naam { font-size: 14px; font-weight: 500; }
     .area-naam .nr { color: var(--geel); margin-right: 8px; }
-    .area-subs { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 6px; }
+    .area-subs { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 8px; }
+    .sub-regel { padding: 2px 0; }
+    .sub-bullet { display: inline-block; width: 14px; color: var(--geel); }
     .status-regel { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 18px; }
   </style>
 </head>
@@ -108,15 +110,25 @@ function setupEventListeners() {
 }
 
 // ─── Data ───────────────────────────────────────
-// De indeling (areas + subgroepen) staat eenmalig klaar; daarna beheert
-// Vincent ze zelf. De vlag /koers/settings/seeded voorkomt dat ze
-// terugkomen als hij ze ooit allemaal weggooit.
+// De indeling (areas + subgroepen) komt uit shared/koers-model.js en wordt
+// weggeschreven zolang de opgeslagen versie achterloopt. Zo landt een
+// bijgewerkte indeling vanzelf, zonder de database met de hand te legen.
+//
+// Let op: dit overschrijft /koers/areas. Dat mag nu, omdat de indeling van
+// ons komt en Vincent hem nog niet zelf beheert. Zodra dat wel zo is
+// (fase 6), moet dit eruit — anders gooit een versieverhoging zijn werk weg.
 async function seedIndienNodig() {
-  const snap = await db.ref('koers/settings/seeded').once('value');
-  if (snap.val() === true) return false;
+  const [vlagSnap, versieSnap] = await Promise.all([
+    db.ref('koers/settings/seeded').once('value'),
+    db.ref('koers/settings/seedVersie').once('value')
+  ]);
+  // Een database van vóór de versietelling heeft alleen 'seeded: true' → versie 1
+  const huidig = versieSnap.val() || (vlagSnap.val() === true ? 1 : 0);
+  if (huidig >= KOERS_SEED_VERSIE) return false;
+
   await fbSet('koers/areas', KOERS_AREAS_DEFAULT);
-  await fbSet('koers/settings/seeded', true);
-  return true;
+  await fbUpdate('koers/settings', { seeded: true, seedVersie: KOERS_SEED_VERSIE });
+  return huidig === 0 ? 'nieuw' : 'bijgewerkt';
 }
 
 function luisterNaarData() {
@@ -135,11 +147,14 @@ function renderAreas() {
   const ids = Object.keys(areas).sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0));
   document.getElementById('areas-lijst').innerHTML = ids.map(id => {
     const a = areas[id];
-    const subs = koersSubgroepen({ [id]: a });
-    const namen = subs.map(sub => esc(sub.name) + (sub.leaf ? '' : ' \u2026'));
+    // Inspringen per niveau: met drie keer 'Ongoing' zegt een platte rij niets
+    const regels = koersSubgroepen({ [id]: a }).map(sub =>
+      `<div class="sub-regel" style="padding-left:${(sub.pad.length - 1) * 18}px">
+         <span class="sub-bullet">${sub.leaf ? '\u00B7' : '\u25B8'}</span>${esc(sub.name)}
+       </div>`).join('');
     return `<div class="area-kaart">
       <div class="area-naam"><span class="nr">${a.order || ''}</span>${esc(a.name)}</div>
-      <div class="area-subs">${namen.join(' \u00B7 ') || 'geen subgroepen'}</div>
+      <div class="area-subs">${regels || 'geen subgroepen'}</div>
     </div>`;
   }).join('');
 
@@ -158,8 +173,9 @@ function renderAreas() {
     setupEventListeners();
 
     try {
-      const nieuw = await seedIndienNodig();
-      if (nieuw) showToast('Indeling aangemaakt');
+      const geseed = await seedIndienNodig();
+      if (geseed === 'nieuw') showToast('Indeling aangemaakt');
+      else if (geseed === 'bijgewerkt') showToast('Indeling bijgewerkt');
       luisterNaarData();
     } catch (e) {
       console.error('Koers-data:', e);

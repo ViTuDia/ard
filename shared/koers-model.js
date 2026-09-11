@@ -127,15 +127,21 @@ function koersCellen(goal, vandaag) {
 }
 
 // ─── Standaard-indeling ─────────────────────────
-// Vijf areas volgens Grip op Ondernemerschap. Wordt eenmalig weggeschreven
-// als /koers/areas nog leeg is; daarna beheert Vincent ze zelf.
+// Vijf gebieden volgens Grip op Ondernemerschap. Wordt weggeschreven als
+// /koers/settings/seedVersie achterloopt op KOERS_SEED_VERSIE hieronder.
+//
+// Verhoog die versie alleen zolang de indeling van hier komt: zodra Vincent
+// gebieden zelf gaat beheren (fase 6) moet dit overschrijven eruit, anders
+// gooit een volgende versie zijn wijzigingen weg.
+const KOERS_SEED_VERSIE = 2;
+
 const KOERS_AREAS_DEFAULT = {
   analyse: {
-    name: 'Analyse', order: 1,
+    name: 'Analyse + Focus', order: 1,
     subgroups: {
-      kansen: { name: 'Kansen/bedreigingen', order: 1 },
+      kansen: { name: 'Kansen/bedreigingen/sterktes/zwaktes', order: 1 },
       strat:  { name: 'Strategische agenda', order: 2 },
-      focus:  { name: 'Focus (See/Do/Want/Move)', order: 3 },
+      sdwm:   { name: 'See, Do, Want, Move', order: 3 },
     },
   },
   context: {
@@ -143,33 +149,43 @@ const KOERS_AREAS_DEFAULT = {
     subgroups: {
       doelgroep: { name: 'Doelgroep', order: 1 },
       marktpos:  { name: 'Marktpositie', order: 2 },
+      waarde:    { name: 'Waardepropositie', order: 3 },
     },
   },
   clients: {
     name: 'Clients', order: 3,
     subgroups: {
-      comm: { name: 'Communicatie', order: 1 },
-      ongV: { name: 'Ongoing Vincent', order: 2 },
+      comm: {
+        name: 'Communicatie', order: 1,
+        subgroups: { 'comm-ong': { name: 'Ongoing', order: 1 } },
+      },
       koud: {
-        name: 'Koude acquisitie', order: 3,
-        subgroups: {
-          'koud-evt': { name: 'Evenementen', order: 1 },
-          'koud-crm': { name: 'CRM', order: 2 },
-        },
+        name: 'Koude acquisitie', order: 2,
+        subgroups: { 'koud-ong': { name: 'Ongoing', order: 1 } },
+      },
+      warm: {
+        name: 'Warme acquisitie = Koppelbaas', order: 3,
+        subgroups: { 'warm-ong': { name: 'Ongoing', order: 1 } },
       },
     },
   },
   company: {
     name: 'Company', order: 4,
     subgroups: {
-      middelen: { name: 'Middelen', order: 1 },
-      ontpl:    { name: 'Ontplooiing', order: 2 },
+      taken: {
+        name: 'Taken', order: 1,
+        subgroups: { ontpl: { name: 'Ontplooiing', order: 1 } },
+      },
+      middelen:   { name: 'Middelen', order: 2 },
+      identiteit: { name: 'Identiteit', order: 3 },
     },
   },
   cash: {
     name: 'Cash', order: 5,
     subgroups: {
-      inkomst: { name: 'Inkomstenplan', order: 1 },
+      inkomst:  { name: 'Inkomstenplan', order: 1 },
+      uitgaven: { name: 'Uitgavenplan', order: 2 },
+      balans:   { name: 'Balans', order: 3 },
     },
   },
 };
