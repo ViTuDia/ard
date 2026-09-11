@@ -39,8 +39,6 @@
     #login-screen input:focus { outline: none; border-color: var(--geel); }
     #login-screen input::placeholder { color: #555; }
     #login-screen button { margin-top: 10px; padding: 10px 32px; font-size: 13px; font-weight: 500; background: var(--geel); color: #000; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
-    #login-screen .link-btn { margin-top: 16px; padding: 4px 8px; background: none; color: #ffffff66; font-size: 11px; font-weight: 400; text-decoration: underline; border-radius: 0; transition: color .15s; }
-    #login-screen .link-btn:hover { color: #ffffffaa; }
     #login-error { color: var(--rood); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
     /* Layout */
@@ -335,7 +333,6 @@
       <input type="password" id="login-pw" name="password" autocomplete="current-password" placeholder="Wachtwoord" onfocus="this.placeholder=''" onblur="if(!this.value)this.placeholder='Wachtwoord'">
       <button onclick="KB.handleLogin()">Inloggen</button>
       <div id="login-error"></div>
-      <button type="button" class="link-btn" onclick="KB.handleReset()">Wachtwoord vergeten?</button>
     </div>
     <!-- Laden (even wachten op Firebase check) -->
     <div id="login-loading" style="display:flex;flex-direction:column;align-items:center">
@@ -759,37 +756,6 @@ function setupConnectionMonitor() {
 function haptic() {
   if (navigator.vibrate) navigator.vibrate(30);
 }
-
-KB.handleReset = async function() {
-  const emailEl = document.getElementById('login-email');
-  const email = emailEl.value.trim();
-  const errEl = document.getElementById('login-error');
-  // Zelfde melding of het adres nu bestaat of niet — anders verklap je welke
-  // accounts er zijn aan iemand die adressen zit te proberen
-  const sent = 'Bestaat dit adres, dan staat er een resetlink in je mail. Kijk ook in je spam.';
-  if (!email) {
-    errEl.style.color = '';
-    errEl.textContent = 'Vul eerst je e-mailadres in, dan sturen we een resetlink.';
-    emailEl.focus();
-    return;
-  }
-  errEl.style.color = '#d9a300';
-  errEl.textContent = 'Bezig...';
-  try {
-    if (!auth) initFirebase();
-    await auth.sendPasswordResetEmail(email);
-    errEl.style.color = '#5cc98a';
-    errEl.textContent = sent;
-  } catch(e) {
-    if (e && e.code === 'auth/user-not-found') {
-      errEl.style.color = '#5cc98a';
-      errEl.textContent = sent;
-    } else {
-      errEl.style.color = '';
-      errEl.textContent = authErrorText(e);
-    }
-  }
-};
 
 KB.handleLogin = async function() {
   const email = document.getElementById('login-email').value.trim();
