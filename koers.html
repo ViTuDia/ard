@@ -13,6 +13,7 @@
   <script src="shared/firebase.js"></script>
   <script src="shared/theme.js"></script>
   <script src="shared/helpers.js"></script>
+  <script src="shared/koers-model.js"></script>
   <style>
     #app { display: none; flex-direction: column; min-height: 100vh; }
     .app-body { flex: 1; padding: 40px 24px; }
@@ -23,6 +24,17 @@
     }
     .nog-leeg h2 { font-size: 18px; font-weight: 500; color: var(--txtPrimary); margin-bottom: 8px; }
     .nog-leeg p { font-size: 13px; font-weight: 300; line-height: 1.6; }
+
+    /* Voorlopig overzicht van de indeling; de roadmap zelf komt in fase 3 */
+    .areas-lijst { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+    .area-kaart {
+      background: var(--kaart); border: 1px solid var(--kaartBorder);
+      border-radius: 6px; padding: 14px 18px;
+    }
+    .area-naam { font-size: 14px; font-weight: 500; }
+    .area-naam .nr { color: var(--geel); margin-right: 8px; }
+    .area-subs { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 6px; }
+    .status-regel { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 18px; }
   </style>
 </head>
 <body>
@@ -31,10 +43,12 @@
     <div class="app-body">
       <div class="app-inner">
         <div class="nog-leeg">
-          <h2>Koers komt hier</h2>
-          <p>Kwartaaldoelen en de Gantt-weergave worden in een volgende fase gebouwd.<br>
-             De schil — login, thema, app-switcher — staat al.</p>
+          <h2>De indeling staat</h2>
+          <p>Dit zijn de gebieden waar je doelen straks onder hangen.<br>
+             De roadmap zelf — balken, maanden, statussen — komt in de volgende fase.</p>
         </div>
+        <div class="areas-lijst" id="areas-lijst"></div>
+        <div class="status-regel" id="status-regel"></div>
       </div>
     </div>
     <div class="footer">
@@ -53,7 +67,8 @@
 const KR = {};
 
 const KR_STATE = {
-  ui: { dark: themeIsDark(), headerMenu: false }
+  ui: { dark: themeIsDark(), headerMenu: false },
+  data: { areas: {}, goals: {} }
 };
 
 function C() { return themePalette(KR_STATE.ui.dark); }
@@ -92,12 +107,67 @@ function setupEventListeners() {
   });
 }
 
+// ─── Data ───────────────────────────────────────
+// De indeling (areas + subgroepen) staat eenmalig klaar; daarna beheert
+// Vincent ze zelf. De vlag /koers/settings/seeded voorkomt dat ze
+// terugkomen als hij ze ooit allemaal weggooit.
+async function seedIndienNodig() {
+  const snap = await db.ref('koers/settings/seeded').once('value');
+  if (snap.val() === true) return false;
+  await fbSet('koers/areas', KOERS_AREAS_DEFAULT);
+  await fbSet('koers/settings/seeded', true);
+  return true;
+}
+
+function luisterNaarData() {
+  db.ref('koers/areas').on('value', snap => {
+    KR_STATE.data.areas = snap.val() || {};
+    renderAreas();
+  });
+  db.ref('koers/goals').on('value', snap => {
+    KR_STATE.data.goals = snap.val() || {};
+    renderAreas();
+  });
+}
+
+function renderAreas() {
+  const areas = KR_STATE.data.areas;
+  const ids = Object.keys(areas).sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0));
+  document.getElementById('areas-lijst').innerHTML = ids.map(id => {
+    const a = areas[id];
+    const subs = koersSubgroepen({ [id]: a });
+    const namen = subs.map(sub => esc(sub.name) + (sub.leaf ? '' : ' \u2026'));
+    return `<div class="area-kaart">
+      <div class="area-naam"><span class="nr">${a.order || ''}</span>${esc(a.name)}</div>
+      <div class="area-subs">${namen.join(' \u00B7 ') || 'geen subgroepen'}</div>
+    </div>`;
+  }).join('');
+
+  const aantalDoelen = Object.keys(KR_STATE.data.goals).length;
+  const bladeren = koersLeafSubgroepen(areas).length;
+  document.getElementById('status-regel').textContent =
+    `${ids.length} gebieden, ${bladeren} subgroepen waar doelen aan kunnen hangen, ` +
+    `${aantalDoelen} ${aantalDoelen === 1 ? 'doel' : 'doelen'}.`;
+}
+
 (function init() {
-  requireAuth(() => {
+  requireAuth(async () => {
     document.getElementById('app').style.display = 'flex';
     applyTheme();
     render();
     setupEventListeners();
+
+    try {
+      const nieuw = await seedIndienNodig();
+      if (nieuw) showToast('Indeling aangemaakt');
+      luisterNaarData();
+    } catch (e) {
+      console.error('Koers-data:', e);
+      const uitleg = (e && e.code === 'PERMISSION_DENIED')
+        ? 'Geen toegang tot /koers. Staat de koers-regel al in de Firebase-rules?'
+        : 'Kon de indeling niet laden: ' + (e.message || e);
+      document.getElementById('status-regel').textContent = uitleg;
+    }
   });
 })();
   </script>
