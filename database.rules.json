@@ -1,14 +1,16 @@
 {
   "rules": {
-    "meta": {
-      ".read": true,
-      ".write": true
-    },
-    "devTypes": { ".read": true, ".write": true },
-    "kansCats": { ".read": true, ".write": true },
-    "devs": { ".read": true, ".write": true },
-    "kansen": { ".read": true, ".write": true },
-    "matches": { ".read": true, ".write": true },
-    "users": { ".read": true, ".write": true }
+    ".read": false,
+    ".write": false,
+
+    "meta":     { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "devTypes": { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "kansCats": { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "devs":     { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "kansen":   { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "matches":  { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+    "users":    { ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true", ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true" },
+
+    "allowedUsers": { ".read": false, ".write": false }
   }
 }

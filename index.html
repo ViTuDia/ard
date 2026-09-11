@@ -7,6 +7,7 @@
   <title>De Koppelbaas — ARD</title>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -39,8 +40,6 @@
     #login-screen input::placeholder { color: #555; }
     #login-screen button { margin-top: 10px; padding: 10px 32px; font-size: 13px; font-weight: 500; background: var(--geel); color: #000; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
     #login-error { color: var(--rood); font-size: 12px; margin-top: 8px; min-height: 18px; }
-    #login-screen .login-setup-msg { color: #ffffff88; font-size: 11px; margin-bottom: 12px; max-width: 260px; text-align: center; line-height: 1.5; }
-    #login-screen .login-success { color: var(--groen); font-size: 12px; margin-top: 8px; min-height: 18px; }
 
     /* Layout */
     html, body { height: 100%; }
@@ -330,24 +329,10 @@
     </div>
     <!-- Login-modus -->
     <div id="login-mode" style="display:none;flex-direction:column;align-items:center">
-      <input type="password" id="login-pw" placeholder="Wachtwoord" onfocus="this.placeholder=''" onblur="if(!this.value)this.placeholder='Wachtwoord'" autofocus>
+      <input type="email" id="login-email" name="email" autocomplete="username" placeholder="E-mailadres" style="margin-bottom:6px" onfocus="this.placeholder=''" onblur="if(!this.value)this.placeholder='E-mailadres'" autofocus>
+      <input type="password" id="login-pw" name="password" autocomplete="current-password" placeholder="Wachtwoord" onfocus="this.placeholder=''" onblur="if(!this.value)this.placeholder='Wachtwoord'">
       <button onclick="KB.handleLogin()">Inloggen</button>
       <div id="login-error"></div>
-    </div>
-    <!-- Setup-modus (eenmalig, als geen hash in Firebase) -->
-    <div id="setup-mode" style="display:none;flex-direction:column;align-items:center">
-      <div class="login-setup-msg">Geen wachtwoord ingesteld. Kies een wachtwoord om de app te beveiligen.</div>
-      <input type="password" id="setup-pw1" placeholder="Nieuw wachtwoord" style="margin-bottom:6px">
-      <input type="password" id="setup-pw2" placeholder="Herhaal wachtwoord">
-      <button onclick="KB.handleSetup()">Instellen</button>
-      <div id="setup-error"></div>
-    </div>
-    <!-- Setup gelukt -->
-    <div id="setup-done" style="display:none;flex-direction:column;align-items:center">
-      <div style="color:#007b2f;font-size:32px;margin-bottom:12px">&#10003;</div>
-      <div style="color:#fff;font-size:14px;margin-bottom:6px">Wachtwoord ingesteld!</div>
-      <div style="color:#ffffff66;font-size:11px;margin-bottom:20px">Je kunt nu inloggen.</div>
-      <button onclick="document.getElementById('setup-done').style.display='none';document.getElementById('login-mode').style.display='flex';document.getElementById('login-pw').focus();" style="padding:10px 32px;font-size:13px;font-weight:500;background:#d9a300;color:#000;border:none;border-radius:4px;cursor:pointer;font-family:inherit">Naar inloggen</button>
     </div>
     <!-- Laden (even wachten op Firebase check) -->
     <div id="login-loading" style="display:flex;flex-direction:column;align-items:center">
@@ -632,6 +617,7 @@ const firebaseConfig = {
 };
 
 let db = null;
+let auth = null;
 
 function initFirebase() {
   if (db) return;
@@ -639,6 +625,7 @@ function initFirebase() {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
+    auth = firebase.auth();
     db = firebase.database();
   } catch(e) {
     console.error('Firebase init fout:', e);
@@ -662,22 +649,37 @@ function fbPush(path, data) { const ref = db.ref(path).push(); ref.set(data); re
 function fbMulti(updates) { return db.ref().update(updates); }
 
 // ─── H. LOGIN ────────────────────────────────────
+// Authenticatie loopt via Firebase Authentication (e-mail + wachtwoord).
+// Google verifieert het wachtwoord server-side; de database-rules laten
+// uitsluitend ingelogde gebruikers toe. Accounts beheer je in de Firebase
+// Console onder Authentication → Users.
 
-async function hashPassword(pw, salt) {
-  const enc = new TextEncoder().encode((salt || '') + pw);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function generateSalt() {
-  const arr = new Uint8Array(16);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+// Nederlandse tekst bij de Firebase Auth-foutcodes die hier kunnen optreden
+function authErrorText(e) {
+  const code = (e && e.code) || '';
+  // Lokaal previewen: de API-key staat alleen de live domeinen toe als referrer
+  if (code.indexOf('requests-from-referer') !== -1) {
+    return 'Dit adres staat niet in de API-key-restricties. Voeg het toe in Google Cloud Console → Credentials, of test op ard.atelierruimdenkers.nl.';
+  }
+  switch (code) {
+    case 'auth/invalid-email':          return 'Ongeldig e-mailadres.';
+    case 'auth/user-disabled':          return 'Dit account is geblokkeerd.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':     return 'E-mailadres of wachtwoord is onjuist.';
+    case 'auth/too-many-requests':      return 'Te veel pogingen. Probeer het over een paar minuten opnieuw.';
+    case 'auth/network-request-failed': return 'Geen verbinding. Controleer je internet.';
+    case 'auth/weak-password':          return 'Wachtwoord te zwak: kies er een van minimaal 8 tekens.';
+    case 'auth/requires-recent-login':  return 'Log opnieuw in en probeer het daarna nog een keer.';
+    case 'auth/operation-not-allowed':  return 'E-mail/wachtwoord-login staat uit in Firebase.';
+    default: return 'Fout: ' + ((e && e.message) || 'onbekend');
+  }
 }
 
 function hideAllLoginPanels() {
-  ['login-mode','setup-mode','setup-done','login-loading'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
+  ['login-mode','login-loading'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
 }
 
@@ -690,70 +692,26 @@ function showPanel(id) {
 }
 
 let _appEntered = false;
-let _sessionHash = '';
 function enterApp() {
   if (_appEntered) return;
   _appEntered = true;
-  localStorage.setItem('kb_session', '1');
-  localStorage.setItem('kb_hash', _sessionHash || '');
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   applyTheme();
   setupListeners();
   setupEventListeners();
   setupConnectionMonitor();
-
-  // Realtime listener: log direct uit als wachtwoord elders gewijzigd wordt
-  db.ref('meta/passwordHash').on('value', snap => {
-    const current = snap.val();
-    if (_sessionHash && current && current !== _sessionHash) {
-      localStorage.removeItem('kb_session');
-      localStorage.removeItem('kb_hash');
-      location.reload();
-    }
-  });
 }
 
-// Bij opstarten: check of er een hash in Firebase staat
-KB.checkInitialState = async function() {
-  // Harde fallback: als na 8 seconden niets getoond is, toon login-scherm met foutmelding
-  // (login-mode i.p.v. setup-mode om accidenteel overschrijven van bestaand wachtwoord te voorkomen)
-  let resolved = false;
-  const fallbackTimer = setTimeout(() => {
-    if (!resolved) {
-      resolved = true;
-      showPanel('login-mode');
-      document.getElementById('login-error').textContent = 'Firebase reageert niet. Controleer je verbinding en herlaad de pagina.';
-    }
-  }, 8000);
-
-  try {
-    if (!db) initFirebase();
-    if (!db) {
-      clearTimeout(fallbackTimer); resolved = true;
-      showPanel('setup-mode');
-      document.getElementById('setup-error').textContent = 'Kan Firebase niet initialiseren.';
-      return;
-    }
-    const snap = await db.ref('meta/passwordHash').once('value');
-    clearTimeout(fallbackTimer);
-    if (resolved) return; // fallback heeft al overgenomen
-    resolved = true;
-    const val = snap.val();
-    if (!val) {
-      showPanel('setup-mode');
-    } else {
-      showPanel('login-mode');
-      document.getElementById('login-pw').focus();
-    }
-  } catch(e) {
-    clearTimeout(fallbackTimer);
-    if (resolved) return;
-    resolved = true;
-    showPanel('login-mode');
-    document.getElementById('login-error').textContent = 'Fout: ' + e.message;
-  }
-};
+function showLogin(msg) {
+  showPanel('login-mode');
+  const errEl = document.getElementById('login-error');
+  errEl.style.color = '';
+  errEl.textContent = msg || '';
+  const emailEl = document.getElementById('login-email');
+  if (emailEl && !emailEl.value) emailEl.focus();
+  else document.getElementById('login-pw').focus();
+}
 
 // ─── TOAST ──────────────────────────────────────
 let _undoTimer = null;
@@ -799,75 +757,22 @@ function haptic() {
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
-KB.handleSetup = async function() {
-  const pw1 = document.getElementById('setup-pw1').value.trim();
-  const pw2 = document.getElementById('setup-pw2').value.trim();
-  const errEl = document.getElementById('setup-error');
-  errEl.textContent = '';
-  if (!pw1) { errEl.textContent = 'Voer een wachtwoord in.'; return; }
-  if (pw1.length < 8) { errEl.textContent = 'Minimaal 8 tekens.'; return; }
-  if (pw1 !== pw2) { errEl.textContent = 'Wachtwoorden komen niet overeen.'; return; }
+KB.handleLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  if (!email) { errEl.style.color = ''; errEl.textContent = 'Voer je e-mailadres in.'; return; }
+  if (!pw) { errEl.style.color = ''; errEl.textContent = 'Voer een wachtwoord in.'; return; }
   errEl.style.color = '#d9a300';
   errEl.textContent = 'Bezig...';
   try {
-    if (!db) initFirebase();
-    // Veiligheidscheck: nooit een bestaand wachtwoord overschrijven via setup
-    const existsSnap = await db.ref('meta/passwordHash').once('value');
-    if (existsSnap.val()) {
-      errEl.style.color = '';
-      errEl.textContent = 'Er is al een wachtwoord ingesteld. Pagina wordt herladen.';
-      setTimeout(() => location.reload(), 1500);
-      return;
-    }
-    const salt = generateSalt();
-    const hashed = await hashPassword(pw1, salt);
-    await fbMulti({
-      'meta/passwordHash': hashed,
-      'meta/passwordSalt': salt
-    });
-    showPanel('setup-done');
+    if (!auth) initFirebase();
+    await auth.signInWithEmailAndPassword(email, pw);
+    // onAuthStateChanged pakt het op en roept enterApp() aan
+    errEl.textContent = '';
   } catch(e) {
     errEl.style.color = '';
-    errEl.textContent = 'Fout: ' + e.message;
-  }
-};
-
-KB.handleLogin = async function() {
-  const pw = document.getElementById('login-pw').value;
-  if (!pw) { document.getElementById('login-error').textContent = 'Voer een wachtwoord in.'; return; }
-  document.getElementById('login-error').textContent = '';
-  try {
-    if (!db) initFirebase();
-    const [hashSnap, saltSnap] = await Promise.all([
-      db.ref('meta/passwordHash').once('value'),
-      db.ref('meta/passwordSalt').once('value')
-    ]);
-    const stored = hashSnap.val();
-    const storedSalt = saltSnap.val() || '';
-    if (!stored) {
-      showPanel('setup-mode');
-      return;
-    }
-    const hashed = await hashPassword(pw, storedSalt);
-    if (hashed === stored) {
-      if (!storedSalt) {
-        // Legacy migratie: upgrade ongesalt hash naar gesalt
-        const newSalt = generateSalt();
-        const newHash = await hashPassword(pw, newSalt);
-        _sessionHash = newHash;
-        await fbMulti({
-          'meta/passwordHash': newHash,
-          'meta/passwordSalt': newSalt
-        });
-      } else {
-        _sessionHash = hashed;
-      }
-      enterApp();
-    } else {
-      document.getElementById('login-error').textContent = 'Onjuist wachtwoord.';
-    }
-  } catch(e) {
-    document.getElementById('login-error').textContent = 'Verbindingsfout: ' + e.message;
+    errEl.textContent = authErrorText(e);
   }
 };
 
@@ -2846,26 +2751,20 @@ function setupEventListeners() {
           if (!md.newPw || md.newPw.length < 8) { md.pwMsg = 'Nieuw wachtwoord: minimaal 8 tekens.'; md.pwOk = false; renderModal(); return; }
           if (md.newPw !== md.newPw2) { md.pwMsg = 'Nieuwe wachtwoorden komen niet overeen.'; md.pwOk = false; renderModal(); return; }
           try {
-            const [hashSnap, saltSnap] = await Promise.all([
-              db.ref('meta/passwordHash').once('value'),
-              db.ref('meta/passwordSalt').once('value')
-            ]);
-            const stored = hashSnap.val();
-            const storedSalt = saltSnap.val() || '';
-            const oldHash = await hashPassword(md.oldPw, storedSalt);
-            if (oldHash !== stored) { md.pwMsg = 'Huidig wachtwoord is onjuist.'; md.pwOk = false; renderModal(); return; }
-            const newSalt = generateSalt();
-            const newHash = await hashPassword(md.newPw, newSalt);
-            _sessionHash = newHash;
-            localStorage.setItem('kb_hash', newHash);
-            await fbMulti({
-              'meta/passwordHash': newHash,
-              'meta/passwordSalt': newSalt
-            });
+            const user = auth && auth.currentUser;
+            if (!user) { md.pwMsg = 'Je bent niet meer ingelogd. Herlaad de pagina.'; md.pwOk = false; renderModal(); return; }
+            // Firebase eist een recente login voordat het wachtwoord mag wijzigen
+            const cred = firebase.auth.EmailAuthProvider.credential(user.email, md.oldPw);
+            await user.reauthenticateWithCredential(cred);
+            await user.updatePassword(md.newPw);
             md.pwMsg = 'Wachtwoord gewijzigd!'; md.pwOk = true;
             md.oldPw = ''; md.newPw = ''; md.newPw2 = '';
             renderModal();
-          } catch(err) { md.pwMsg = 'Fout: ' + err.message; md.pwOk = false; renderModal(); }
+          } catch(err) {
+            const wrong = err && (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential');
+            md.pwMsg = wrong ? 'Huidig wachtwoord is onjuist.' : authErrorText(err);
+            md.pwOk = false; renderModal();
+          }
         })();
         break;
       }
@@ -2937,9 +2836,8 @@ function setupEventListeners() {
         break;
       }
       case 'logout':
-        localStorage.removeItem('kb_session');
-        localStorage.removeItem('kb_hash');
-        location.reload();
+        if (auth) auth.signOut().finally(() => location.reload());
+        else location.reload();
         break;
 
       // Dev CRUD
@@ -3973,45 +3871,33 @@ function setupEventListeners() {
 (function init() {
   try { initFirebase(); } catch(e) { console.error('Firebase init:', e); }
 
-  if (localStorage.getItem('kb_session') === '1' && db) {
-    // Valideer of de opgeslagen hash nog klopt (wachtwoord kan gewijzigd zijn)
-    const savedHash = localStorage.getItem('kb_hash') || '';
-    db.ref('meta/passwordHash').once('value').then(snap => {
-      const currentHash = snap.val();
-      if (savedHash && currentHash && savedHash === currentHash) {
-        _sessionHash = savedHash;
+  // Opruimen: restanten van de oude client-side login
+  localStorage.removeItem('kb_session');
+  localStorage.removeItem('kb_hash');
+
+  if (auth) {
+    // Firebase bewaart de sessie zelf; onAuthStateChanged vuurt bij elke start
+    auth.onAuthStateChanged(user => {
+      if (user) {
         try { enterApp(); } catch(e) {
           console.error('EnterApp:', e);
-          localStorage.removeItem('kb_session');
-          localStorage.removeItem('kb_hash');
-          KB.checkInitialState();
+          showLogin('Fout bij laden: ' + e.message);
         }
+      } else if (_appEntered) {
+        location.reload(); // uitgelogd, hier of op een ander apparaat
       } else {
-        // Hash klopt niet meer → uitloggen
-        localStorage.removeItem('kb_session');
-        localStorage.removeItem('kb_hash');
-        KB.checkInitialState();
-      }
-    }).catch(e => {
-      // Geen verbinding → laat toch door (offline tolerantie)
-      _sessionHash = savedHash;
-      try { enterApp(); } catch(e2) {
-        console.error('EnterApp:', e2);
-        localStorage.removeItem('kb_session');
-        localStorage.removeItem('kb_hash');
-        KB.checkInitialState();
+        showLogin();
       }
     });
   } else {
-    KB.checkInitialState();
+    showLogin('Kan Firebase niet initialiseren. Herlaad de pagina.');
   }
 
   // Event listeners — altijd registreren
-  document.getElementById('login-pw').addEventListener('keydown', e => {
-    if (e.key === 'Enter') KB.handleLogin();
-  });
-  document.getElementById('setup-pw2').addEventListener('keydown', e => {
-    if (e.key === 'Enter') KB.handleSetup();
+  ['login-email','login-pw'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') KB.handleLogin();
+    });
   });
   window.addEventListener('resize', () => updateMobView());
 })();
