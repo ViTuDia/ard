@@ -1,0 +1,136 @@
+/* ════════════════════════════════════════════════════
+   ARD — gedeelde stijl voor alle apps
+   Gebruikt door index.html (router), koppelbaas.html, koers.html
+   ════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #fafaf9; --header: #d9a300; --headerTxt: #000; --headerSub: #00000088; --headerDiv: #00000033;
+  --panelBg: #fff; --kaart: #fff; --kaartBorder: #e8e7e4; --selBg: #fff; --footerBg: #fff;
+  --txtPrimary: #000; --txtSecondary: #878786; --zachtgrijs: #e8e7e4; --lichtgrijs: #f4f3f1;
+  --geel: #d9a300; --grijs: #878786; --blauw: #006f9d; --rood: #c22d0b; --groen: #007b2f; --oranje: #c97b1a;
+  --modalBg: #fff; --modalOverlay: rgba(0,0,0,0.4); --inputBorder: #e8e7e4;
+  --badgeBg: #2a2a2a; --badgeTxt: #fff;
+  --devSelBg: #000; --devSelTxt: #fff; --devSelBorder: #d9a300;
+  --devHlBg: #e8f5e9; --devHlBorder: #007b2f;
+  --catGroupBg: #f7f6f4; --catHeaderBg: #eeedea;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: 'Rubik','Helvetica Neue',sans-serif; background: var(--bg); color: var(--txtPrimary); min-height: 100vh; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--zachtgrijs); border-radius: 3px; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+/* ─── Login ───────────────────────────────────── */
+#login-screen { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+#login-screen .logo { color: #fff; text-align: center; margin-bottom: 30px; }
+#login-screen .logo-ard { font-size: 42px; font-weight: 700; letter-spacing: 5px; }
+#login-screen .logo-sub { font-size: 10px; font-weight: 300; letter-spacing: 3px; color: #ffffff66; margin-top: 4px; }
+#login-screen input { width: 260px; padding: 10px 14px; font-size: 14px; border: 1px solid #333; border-radius: 4px; background: #111; color: #fff; font-family: inherit; text-align: center; }
+#login-screen input:focus { outline: none; border-color: var(--geel); }
+#login-screen input::placeholder { color: #555; }
+#login-screen button { margin-top: 10px; padding: 10px 32px; font-size: 13px; font-weight: 500; background: var(--geel); color: #000; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
+#login-error { color: var(--rood); font-size: 12px; margin-top: 8px; min-height: 18px; }
+
+/* ─── Gouden header ───────────────────────────── */
+.header { background: var(--header); color: var(--headerTxt); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.header-left { display: flex; align-items: center; gap: 18px; }
+.header-logo-ard { font-size: 26px; font-weight: 700; letter-spacing: 3px; }
+.header-logo-sub { font-size: 8px; font-weight: 300; letter-spacing: 2px; color: var(--headerSub); margin-top: 2px; }
+.header-div { width: 1px; height: 32px; background: var(--headerDiv); }
+.header-title-label { font-size: 9px; font-weight: 300; letter-spacing: 2px; color: var(--headerSub); text-transform: uppercase; }
+.header-title-name { font-size: 20px; font-weight: 300; margin-top: 2px; }
+.header-right { display: flex; gap: 6px; align-items: center; }
+.header-stat { text-align: center; }
+.header-stat-val { font-size: 20px; font-weight: 500; }
+.header-stat-lbl { font-size: 8px; color: var(--headerSub); letter-spacing: 1px; text-transform: uppercase; font-weight: 300; }
+.header-btn { color: #fff; font-size: 12px; padding: 6px 12px; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.15s; }
+.header-btn:hover { opacity: 0.75; background: #555 !important; }
+.header-btn-icon { width: 36px; padding: 0; }
+.header-icon { font-size: 18px; line-height: 1; }
+
+/* ─── App-switcher (pills onder de header) ────── */
+.app-switcher { display: flex; gap: 6px; padding: 8px 24px; background: var(--panelBg); border-bottom: 1px solid var(--zachtgrijs); flex-shrink: 0; }
+.app-pill {
+  height: 32px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: 0.5px;
+  border-radius: 16px; border: 1px solid var(--zachtgrijs); background: transparent;
+  color: var(--txtSecondary); cursor: pointer; text-decoration: none;
+  white-space: nowrap; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.app-pill:hover { border-color: var(--geel); color: var(--txtPrimary); }
+.app-pill.active { background: var(--geel); border-color: var(--geel); color: #000; }
+
+/* ─── Knoppen ─────────────────────────────────── */
+.btn { padding: 8px 16px; font-size: 12px; font-weight: 500; border: none; border-radius: 3px; cursor: pointer; font-family: inherit; }
+.btn-sm { padding: 3px 8px; font-size: 10px; }
+.btn-xs { padding: 2px 6px; font-size: 10px; }
+.btn-black { background: #000; color: #fff; }
+.btn-grey { background: var(--lichtgrijs); color: var(--grijs); }
+.btn-red { background: rgba(194,45,11,0.08); color: var(--rood); }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--grijs); font-family: inherit; padding: 2px 4px; transition: color 0.15s; }
+.btn-icon:hover { color: var(--geel); }
+.btn-full { width: 100%; margin-top: 4px; }
+.chev { display: inline-block; width: 14px; text-align: center; flex-shrink: 0; }
+
+/* ─── Modals ──────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: var(--modalOverlay); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: var(--modalBg); border-radius: 8px; width: 100%; max-height: 85vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.15); color: var(--txtPrimary); }
+.modal-head { padding: 14px 20px; border-bottom: 1px solid var(--zachtgrijs); display: flex; justify-content: space-between; align-items: center; }
+.modal-head h3 { font-size: 16px; font-weight: 500; }
+.modal-body { padding: 20px; }
+.field { margin-bottom: 14px; }
+.field label { font-size: 10px; font-weight: 500; color: var(--txtSecondary); display: block; margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+.field input, .field select, .field textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--inputBorder); border-radius: 4px; font-family: inherit; color: var(--txtPrimary); background: var(--kaart); transition: border-color 0.15s; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--geel); }
+.field input:hover, .field select:hover, .field textarea:hover { border-color: var(--grijs); }
+.field textarea { min-height: 60px; resize: vertical; }
+
+/* ─── Toast ───────────────────────────────────── */
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 12px; font-weight: 500; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex; align-items: center; gap: 12px; }
+.toast .undo-btn { background: var(--geel); color: #000; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.toast.show { opacity: 1; pointer-events: auto; }
+
+/* ─── Kleine gedeelde onderdelen ──────────────── */
+.cb { width: 16px; height: 16px; border-radius: 2px; border: 2px solid var(--zachtgrijs); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+.cb.checked { background: var(--geel); border-color: var(--geel); color: #000; }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+.footer { flex-shrink: 0; padding: 12px 24px; border-top: 1px solid var(--zachtgrijs); background: var(--footerBg); display: flex; justify-content: space-between; align-items: center; }
+.footer span { font-size: 12px; color: var(--grijs); font-weight: 300; }
+
+/* ─── Print ───────────────────────────────────── */
+@media print {
+  [data-noprint] { display: none !important; }
+  #login-screen { display: none !important; }
+  .app-switcher { display: none !important; }
+}
+
+/* ─── Mobiel (< 768px) ────────────────────────── */
+@media (max-width: 767px) {
+  .header { padding: 10px 12px; gap: 6px; }
+  .header-left { gap: 10px; }
+  .header-logo-ard { font-size: 20px; letter-spacing: 2px; }
+  .header-logo-sub { display: none; }
+  .header-div { height: 24px; }
+  .header-title-name { font-size: 16px; }
+  .header-right { gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
+  .header-btn { padding: 6px 8px; font-size: 11px; height: 34px; }
+  .header-btn-icon { width: 34px; }
+  .header-btn .header-icon { font-size: 16px; }
+
+  .app-switcher { padding: 6px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .app-pill { padding: 0 12px; font-size: 11px; }
+
+  .btn { min-height: 36px; padding: 10px 16px; font-size: 13px; }
+  .btn-sm { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  .btn-xs { padding: 6px 10px; font-size: 11px; min-height: 32px; }
+  .btn-icon { padding: 6px 8px; font-size: 16px; min-height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; }
+  .cb { width: 22px; height: 22px; font-size: 12px; }
+
+  .modal-overlay { padding: 10px; align-items: flex-end; }
+  .modal { max-height: 90vh; border-radius: 12px 12px 0 0; }
+  .modal-body { padding: 16px; }
+  .field input, .field select, .field textarea { padding: 10px 12px; font-size: 15px; }
+}

@@ -4,76 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>ARD — De In-Kopper</title>
+  <title>ARD — In-Kopper</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="shared/theme.css">
+  <script src="shared/firebase.js"></script>
+  <script src="shared/theme.js"></script>
+  <script src="shared/helpers.js"></script>
   <style>
-    :root {
-      --bg:#fafaf9; --kaart:#ffffff; --kaartBorder:#e8e7e4;
-      --txtPrimary:#000000; --txtSecondary:#878786;
-      --lichtgrijs:#f4f3f1; --zachtgrijs:#e8e7e4;
-      --geel:#d9a300; --grijs:#878786;
-      --rood:#c22d0b; --groen:#007b2f; --oranje:#c97b1a; --blauw:#006f9d;
-      --inputBorder:#e8e7e4;
-      --header:#d9a300; --headerTxt:#000000; --headerSub:#00000088;
-      --catGroupBg:#f7f6f4;
+    /* Palet, header, knoppen en basisstijl staan in shared/theme.css */
+    #app {
+      display:none; flex-direction:column; align-items:center;
+      width:100%; min-height:100vh;
     }
-    body.dark {
-      --bg:#1a1a1a; --kaart:#252525; --kaartBorder:#3a3a3a;
-      --txtPrimary:#e8e8e8; --txtSecondary:#999999;
-      --lichtgrijs:#2a2a2a; --zachtgrijs:#3a3a3a;
-      --geel:#d9a300; --grijs:#999999;
-      --rood:#e85d3a; --groen:#2ea852; --oranje:#e0a030; --blauw:#4dabcf;
-      --inputBorder:#4a4a4a;
-      --header:#252525; --headerTxt:#ffffff; --headerSub:#ffffff66;
-      --catGroupBg:#232323;
-    }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body {
-      font-family:'Rubik','Helvetica Neue',sans-serif;
-      background:var(--bg); color:var(--txtPrimary);
-      min-height:100vh; display:flex; flex-direction:column;
-      align-items:center; padding:0;
-      transition:background .15s, color .15s;
-    }
-    body { --footerBg:#ffffff; }
-    body.dark { --footerBg:#1e1e1e; }
-
-    /* Gouden header — identiek aan Koppelbaas */
-    .header {
-      background:var(--header); color:var(--headerTxt);
-      padding:14px 24px; width:100%;
-      display:flex; justify-content:space-between; align-items:center;
-      flex-wrap:wrap; gap:10px; margin-bottom:24px;
-    }
-    .header-left { display:flex; align-items:center; gap:18px; }
-    .header-logo-ard { font-size:26px; font-weight:700; letter-spacing:3px; }
-    .header-logo-sub { font-size:8px; font-weight:300; letter-spacing:2px; color:var(--headerSub); margin-top:2px; }
-    .header-div { width:1px; height:32px; background:var(--headerDiv); }
-    .header-title-label { font-size:9px; font-weight:300; letter-spacing:2px; color:var(--headerSub); text-transform:uppercase; }
-    .header-title-name { font-size:20px; font-weight:300; margin-top:2px; }
-    .header-right { display:flex; gap:6px; align-items:center; }
-    .header-btn {
-      color:#fff; font-size:12px; padding:6px 12px; height:34px;
-      display:inline-flex; align-items:center; justify-content:center; gap:4px;
-      transition:opacity .15s; border:none; border-radius:6px;
-      cursor:pointer; font-family:inherit; text-decoration:none;
-    }
-    .header-btn:hover { opacity:.75; background:#555 !important; }
-    .header-btn-icon { width:36px; padding:0; }
-    .header-icon { font-size:18px; line-height:1; }
-    @media (max-width:540px) {
-      .header { padding:10px 12px; gap:6px; }
-      .header-left { gap:10px; }
-      .header-logo-ard { font-size:20px; letter-spacing:2px; }
-      .header-logo-sub { display:none; }
-      .header-div { height:24px; }
-      .header-title-name { font-size:16px; }
-      .header-right { gap:4px; }
-      .header-btn { padding:6px 8px; font-size:11px; }
-      .header-btn-icon { width:34px; }
-    }
+    .header { margin-bottom:0; width:100%; }
+    #switcher { width:100%; }
+    .app-switcher { width:100%; margin-bottom:24px; }
+    .header-btn { border-radius:6px; text-decoration:none; }
 
     .card {
       background:var(--kaart); border:1px solid var(--kaartBorder);
@@ -273,6 +224,8 @@
   </style>
 </head>
 <body>
+<!-- Inloggen gebeurt op de router (index.html); deze pagina eist alleen een sessie -->
+<div id="app">
 
 <div class="header">
   <div class="header-left">
@@ -283,17 +236,16 @@
     <div class="header-div"></div>
     <div>
       <div class="header-title-label">Updates</div>
-      <div class="header-title-name">De In-Kopper</div>
+      <div class="header-title-name">In-Kopper</div>
     </div>
   </div>
   <div class="header-right">
-    <a class="header-btn" href="index.html" title="Terug naar De Koppelbaas" style="background:#000">
-      <span class="header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></span>
-      De Koppelbaas
-    </a>
+    <!-- Navigatie naar de andere apps loopt via de switcher hieronder -->
     <button class="header-btn header-btn-icon" id="themeBtn" title="Wissel thema" style="background:#000"></button>
+    <button class="header-btn" id="logoutBtn" title="Uitloggen" style="background:#000">Uitloggen</button>
   </div>
 </div>
+<div id="switcher"></div>
 
 <div class="card">
 
@@ -427,9 +379,11 @@
 </div>
 
 <div class="footer">
-  <span><span class="accent">/ </span>ARD / AtelierRuimDenkers — De In-Kopper</span>
+  <span><span class="accent">/ </span>ARD / AtelierRuimDenkers — In-Kopper</span>
   <span>Willem Buytewechstraat 45, Rotterdam</span>
 </div>
+
+</div><!-- /#app -->
 
 <script>
   const TITLE_MAX = 36;
@@ -454,9 +408,6 @@
     });
   });
 
-  // Escape voor gebruik in innerHTML
-  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
-
   // WP levert namen en titels als gerenderde HTML (met entiteiten zoals &#8217;).
   // DOMParser decodeert die zonder scripts uit te voeren of afbeeldingen te laden,
   // zodat het resultaat veilig door esc() kan.
@@ -470,17 +421,28 @@
   const sunSVG  = '<span class="header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>';
   const moonSVG = '<span class="header-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>';
   function applyTheme() {
-    const dark = localStorage.getItem('kop_theme') === 'dark';
-    document.body.classList.toggle('dark', dark);
+    const dark = themeIsDark();
+    applyPalette(themePalette(dark));
     themeBtn.innerHTML = dark ? sunSVG : moonSVG;
     themeBtn.title = dark ? 'Licht thema' : 'Donker thema';
   }
   themeBtn.addEventListener('click', () => {
-    const dark = localStorage.getItem('kop_theme') === 'dark';
-    localStorage.setItem('kop_theme', dark ? 'light' : 'dark');
+    themeSetDark(!themeIsDark());
     applyTheme();
   });
   applyTheme();
+
+  // Thema-voorkeur was eerder app-eigen; nu gedeeld met de andere ARD-apps
+  localStorage.removeItem('kop_theme');
+
+  // ─── Sessie ───────────────────────────────────────────────────────────────
+  // Inloggen gebeurt op de router; zonder sessie stuurt requireAuth() daarheen
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  requireAuth(() => {
+    document.getElementById('switcher').innerHTML = renderAppSwitcher('inkopper');
+    document.getElementById('app').style.display = 'flex';
+  });
 
   // ─── Config (username persist, appPassword nooit, siteUrl hardcoded) ──────
   const SITE_URL = DEFAULT_SITE;

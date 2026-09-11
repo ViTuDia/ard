@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Kas — ARD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="shared/theme.css">
+  <script src="shared/firebase.js"></script>
+  <script src="shared/theme.js"></script>
+  <script src="shared/helpers.js"></script>
+  <style>
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+    .app-body { flex: 1; padding: 40px 24px; }
+    .app-inner { max-width: 760px; margin: 0 auto; }
+    .nog-leeg {
+      padding: 40px 24px; text-align: center; border-radius: 6px;
+      border: 2px dashed var(--zachtgrijs); color: var(--txtSecondary);
+    }
+    .nog-leeg h2 { font-size: 18px; font-weight: 500; color: var(--txtPrimary); margin-bottom: 8px; }
+    .nog-leeg p { font-size: 13px; font-weight: 300; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="shell"></div>
+    <div class="app-body">
+      <div class="app-inner">
+        <div class="nog-leeg">
+          <h2>Kas komt hier</h2>
+          <p>Facturatie-planning en cash forecast worden later gebouwd.<br>
+             Eerst zetten we de opzet in Excel; daarna koppelen we hem hier.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>ARD <span style="color:var(--geel)">/</span> AtelierRuimDenkers</span>
+      <span>Kas</span>
+    </div>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+// ════════════════════════════════════════════════════
+// KAS — ARD / AtelierRuimDenkers
+// Cash forecast: facturatie per maand. Nu nog een schil; de inhoud volgt.
+// ════════════════════════════════════════════════════
+
+const KA = {};
+
+const KA_STATE = {
+  ui: { dark: themeIsDark(), headerMenu: false }
+};
+
+function C() { return themePalette(KA_STATE.ui.dark); }
+function applyTheme() { applyPalette(C()); }
+
+function render() {
+  document.getElementById('shell').innerHTML = renderAppShell({
+    label: 'FINANCIEEL', naam: 'Kas', appId: 'kas',
+    dark: KA_STATE.ui.dark, menuOpen: KA_STATE.ui.headerMenu, c: C()
+  });
+}
+
+function setupEventListeners() {
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    const action = el ? el.dataset.action : null;
+
+    // Klik buiten het menu sluit het
+    if (KA_STATE.ui.headerMenu && action !== 'toggleHeaderMenu') { KA_STATE.ui.headerMenu = false; render(); }
+    if (!action) return;
+
+    switch(action) {
+      case 'toggleHeaderMenu':
+        KA_STATE.ui.headerMenu = !KA_STATE.ui.headerMenu; render(); break;
+      case 'toggleDark':
+        KA_STATE.ui.dark = !KA_STATE.ui.dark; KA_STATE.ui.headerMenu = false;
+        themeSetDark(KA_STATE.ui.dark);
+        applyTheme(); render(); break;
+      case 'print':
+        KA_STATE.ui.headerMenu = false; render(); setTimeout(() => window.print(), 100); break;
+      case 'logout':
+        logout(); break;
+    }
+  });
+}
+
+(function init() {
+  requireAuth(() => {
+    document.getElementById('app').style.display = 'flex';
+    applyTheme();
+    render();
+    setupEventListeners();
+  });
+})();
+  </script>
+</body>
+</html>
