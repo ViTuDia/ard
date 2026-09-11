@@ -9,11 +9,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <link rel="stylesheet" href="shared/theme.css?v=1">
-  <script src="shared/firebase.js?v=1"></script>
-  <script src="shared/theme.js?v=1"></script>
-  <script src="shared/helpers.js?v=1"></script>
-  <script src="shared/koers-model.js?v=1"></script>
+  <link rel="stylesheet" href="shared/theme.css?v=2">
+  <script src="shared/firebase.js?v=2"></script>
+  <script src="shared/theme.js?v=2"></script>
+  <script src="shared/helpers.js?v=2"></script>
+  <script src="shared/koers-model.js?v=2"></script>
   <style>
     #app { display: none; flex-direction: column; min-height: 100vh; }
     .app-body { flex: 1; padding: 40px 24px; }
@@ -110,25 +110,14 @@ function setupEventListeners() {
 }
 
 // ─── Data ───────────────────────────────────────
-// De indeling (areas + subgroepen) komt uit shared/koers-model.js en wordt
-// weggeschreven zolang de opgeslagen versie achterloopt. Zo landt een
-// bijgewerkte indeling vanzelf, zonder de database met de hand te legen.
-//
-// Let op: dit overschrijft /koers/areas. Dat mag nu, omdat de indeling van
-// ons komt en Vincent hem nog niet zelf beheert. Zodra dat wel zo is
-// (fase 6), moet dit eruit — anders gooit een versieverhoging zijn werk weg.
+// Staat er nog geen indeling, dan komt die uit shared/koers-model.js.
+// Verder niets: de indeling ligt vast, dus een lege /koers/areas is het
+// enige geval waarin er iets te schrijven valt.
 async function seedIndienNodig() {
-  const [vlagSnap, versieSnap] = await Promise.all([
-    db.ref('koers/settings/seeded').once('value'),
-    db.ref('koers/settings/seedVersie').once('value')
-  ]);
-  // Een database van vóór de versietelling heeft alleen 'seeded: true' → versie 1
-  const huidig = versieSnap.val() || (vlagSnap.val() === true ? 1 : 0);
-  if (huidig >= KOERS_SEED_VERSIE) return false;
-
+  const snap = await db.ref('koers/areas').once('value');
+  if (snap.val()) return false;
   await fbSet('koers/areas', KOERS_AREAS_DEFAULT);
-  await fbUpdate('koers/settings', { seeded: true, seedVersie: KOERS_SEED_VERSIE });
-  return huidig === 0 ? 'nieuw' : 'bijgewerkt';
+  return true;
 }
 
 function luisterNaarData() {
@@ -173,9 +162,7 @@ function renderAreas() {
     setupEventListeners();
 
     try {
-      const geseed = await seedIndienNodig();
-      if (geseed === 'nieuw') showToast('Indeling aangemaakt');
-      else if (geseed === 'bijgewerkt') showToast('Indeling bijgewerkt');
+      if (await seedIndienNodig()) showToast('Indeling aangemaakt');
       luisterNaarData();
     } catch (e) {
       console.error('Koers-data:', e);

@@ -127,14 +127,9 @@ function koersCellen(goal, vandaag) {
 }
 
 // ─── Standaard-indeling ─────────────────────────
-// Vijf gebieden volgens Grip op Ondernemerschap. Wordt weggeschreven als
-// /koers/settings/seedVersie achterloopt op KOERS_SEED_VERSIE hieronder.
-//
-// Verhoog die versie alleen zolang de indeling van hier komt: zodra Vincent
-// gebieden zelf gaat beheren (fase 6) moet dit overschrijven eruit, anders
-// gooit een volgende versie zijn wijzigingen weg.
-const KOERS_SEED_VERSIE = 2;
-
+// Vijf gebieden volgens Grip op Ondernemerschap. Dit is de indeling; er is
+// geen oudere die er nog toe doet. koers.html schrijft hem weg zodra
+// /koers/areas leeg is.
 const KOERS_AREAS_DEFAULT = {
   analyse: {
     name: 'Analyse + Focus', order: 1,
