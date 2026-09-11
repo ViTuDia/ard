@@ -102,8 +102,9 @@
     .kr-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kr-groen { background: var(--groen); color: var(--wit, #fff); }
     .kr-half { border-radius: 3px 0 0 3px; }
-    .kr-door { background: linear-gradient(to right, var(--geel) 0%, var(--geel) 80%, transparent 100%);
-               color: var(--zwart, #000); border-radius: 3px 0 0 3px; }
+    /* Doorlopend loopt per kwartaal: losse blokken met een naad ertussen,
+       geen balk die naar het niets vervaagt. */
+    .kr-door { background: var(--geel); color: var(--zwart, #000); margin-right: 3px; }
     .kr-stempel { border: 1px solid rgba(0,0,0,.25); }
     .kr-k-geel { background: var(--geel); }
     .kr-k-oranje { background: var(--oranje); }
@@ -141,6 +142,9 @@
                   font-size: 10px; font-weight: 300; color: var(--txtSecondary); }
     .kr-leg { display: flex; align-items: center; gap: 5px; }
     .kr-swatch { width: 16px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    /* Twee blokjes, want dat is precies wat doorlopend in het raster doet */
+    .kr-swatch.kr-door { margin-right: 0;
+      background: linear-gradient(to right, var(--geel) 0 44%, transparent 44% 56%, var(--geel) 56% 100%); }
 
     /* ─── Mobiel ─────────────────────────────────── */
     @media (max-width: 767px) {
@@ -314,6 +318,19 @@ function krDoelenPerSub() {
   return per;
 }
 
+// Knipt een maandreeks in kwartaalstukken. Een reeks die halverwege een
+// kwartaal begint of eindigt levert een kort stuk op — dat is bedoeld.
+function krKwartaalStukken(van, tot) {
+  const stukken = [];
+  let nr = van;
+  while (nr <= tot) {
+    const eindKw = nr - ((nr % 12) % 3) + 2;
+    stukken.push([nr, Math.min(eindKw, tot)]);
+    nr = eindKw + 1;
+  }
+  return stukken;
+}
+
 function krRijHoogte(rij, per, m) {
   if (rij.type === 'area') return m.rowarea;
   if (!rij.leaf) return m.rowsub;
@@ -444,14 +461,26 @@ function krDoelHtml(s, rijNr, as, m) {
   if (s.groenVan != null && s.groenTot != null && s.groenTot >= s.groenVan) {
     const van = Math.max(s.groenVan, as.van), tot = Math.min(s.groenTot, as.tot);
     if (tot >= van) {
-      const breed = tot - van + 1;
-      titelIn = breed >= 3;
       // Geen stempel (doorlopend) maar wel prioriteit? Dan krijgt de balk de rand
       const prioBar = (!zicht(s.stempel) && g.isPriority) ? ' kr-prio' : '';
-      const soort = (cel.doorlopend ? 'kr-door'
-        : 'kr-groen' + (s.stempel === s.groenTot + 1 ? ' kr-half' : '')) + prioBar;
-      h += `<div class="kr-bar ${soort}" style="${basis};grid-column:${kol(van)}/span ${breed}"${klik}>`
-         + (titelIn ? `<span class="kr-lbl">${titel}${cel.doorlopend ? ' →' : ''}</span>` : '') + `</div>`;
+      if (cel.doorlopend) {
+        // Eén blok per kwartaal: doorlopend werk vink je per kwartaal af,
+        // dus het is geen balk die naar het niets vervaagt.
+        const stukken = krKwartaalStukken(van, tot);
+        titelIn = (stukken[0][1] - stukken[0][0] + 1) >= 3;
+        stukken.forEach((st, i) => {
+          // De prioriteitsrand hoort één keer om het doel, niet om elk kwartaal
+          h += `<div class="kr-bar kr-door${i === 0 ? prioBar : ''}"`
+             + ` style="${basis};grid-column:${kol(st[0])}/span ${st[1] - st[0] + 1}"${klik}>`
+             + (i === 0 && titelIn ? `<span class="kr-lbl">${titel}</span>` : '') + `</div>`;
+        });
+      } else {
+        const breed = tot - van + 1;
+        titelIn = breed >= 3;
+        const soort = 'kr-groen' + (s.stempel === s.groenTot + 1 ? ' kr-half' : '') + prioBar;
+        h += `<div class="kr-bar ${soort}" style="${basis};grid-column:${kol(van)}/span ${breed}"${klik}>`
+           + (titelIn ? `<span class="kr-lbl">${titel}</span>` : '') + `</div>`;
+      }
     }
   }
 
