@@ -92,6 +92,7 @@
       }
     }
     .kr-rij-area { background-color: var(--catHeaderBg); background-image: none; cursor: pointer; }
+    .kr-rij[data-sg] { cursor: cell; }
     .kr-grens { border-top: 2px solid var(--zachtgrijs); }
 
     /* Balken en stempels. Alles wat hier staat komt uit koersCellen(). */
@@ -146,6 +147,24 @@
     .kr-swatch.kr-door { margin-right: 0;
       background: linear-gradient(to right, var(--geel) 0 44%, transparent 44% 56%, var(--geel) 56% 100%); }
 
+    /* ─── Modals ─────────────────────────────────────
+       theme.css levert .modal, .field, .cb en de knoppen; dit is wat Koers
+       er zelf bij nodig heeft. */
+    .kr-veldrij { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kr-hint { font-size: 11px; font-weight: 300; line-height: 1.5; color: var(--txtSecondary);
+               margin: -6px 0 12px; }
+    .kr-cb-rij { display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+                 font-size: 12px; cursor: pointer; }
+    .kr-bes { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .kr-bes th { text-align: left; padding: 0 6px 6px 0; font-size: 10px; font-weight: 500;
+                 letter-spacing: .5px; text-transform: uppercase; color: var(--txtSecondary); }
+    .kr-bes td { padding: 7px 6px 7px 0; border-top: 1px solid var(--lichtgrijs); vertical-align: middle; }
+    .kr-bes select { padding: 4px 6px; font-size: 11px; font-family: inherit; border-radius: 4px;
+                     border: 1px solid var(--inputBorder); background: var(--modalBg); color: var(--txtPrimary); }
+    .kr-bes .kr-pad { font-size: 10px; font-weight: 300; color: var(--txtSecondary); }
+    .kr-bes-knoppen { white-space: nowrap; text-align: right; }
+    .kr-bes-knoppen .btn { margin-left: 4px; }
+
     /* ─── Mobiel ─────────────────────────────────── */
     @media (max-width: 767px) {
       #kr-grid { --kr-left: 124px; --kr-col: 26px; --kr-bar: 18px; --kr-pad: 5px; --kr-gap: 3px;
@@ -153,6 +172,11 @@
       .kr-toolbar { padding: 6px 12px; }
       #kr-legenda { padding: 6px 12px; gap: 10px; font-size: 9px; }
       #kr-melding { padding: 8px 12px; }
+      /* Op een telefoon blijft alleen het icoon van de headerknoppen over */
+      .kr-btn-lang { display: none; }
+      .kr-veldrij { grid-template-columns: 1fr; gap: 0; }
+      .kr-bes-knoppen { text-align: left; }
+      .kr-bes-knoppen .btn { margin: 2px 4px 2px 0; }
     }
 
     /* ─── Print ──────────────────────────────────── */
@@ -205,7 +229,10 @@ const KR_STATE = {
     dark: themeIsDark(), headerMenu: false,
     collapsedAreas: {},
     naarVandaagGedaan: false,
-    melding: ''
+    melding: '',
+    // modalData is de edit-buffer: een kopie van het doel, of een vers doel
+    // met isNew. Pas bij Klaar gaat het naar Firebase.
+    modal: null, modalData: null, modalExtra: null, modalDirty: false
   },
   data: { areas: {}, goals: {}, settings: {} }
 };
@@ -442,7 +469,9 @@ function krRijAchtergrond(rij, rijNr) {
     return `<div class="kr-rij kr-rij-area${rij.eerste ? '' : ' kr-grens'}" style="grid-row:${rijNr}"`
          + ` data-action="toggleArea" data-area="${esc(rij.areaId)}"></div>`;
   }
-  return `<div class="kr-rij" style="grid-row:${rijNr}"${rij.leaf ? ` data-sg="${esc(rij.sgId)}"` : ''}></div>`;
+  // Alleen bladeren zijn aanklikbaar: doelen hangen niet aan een tussenlaag
+  return `<div class="kr-rij" style="grid-row:${rijNr}"`
+       + (rij.leaf ? ` data-action="nieuwInCel" data-sg="${esc(rij.sgId)}"` : '') + `></div>`;
 }
 
 // Eén doel: groene aanloop (of de doorlopende balk), de stempel, de
@@ -543,12 +572,334 @@ function renderLegenda() {
   return h;
 }
 
+// ─── Doelen ─────────────────────────────────────
+// Labels en opties. De subgroep-optie zet de gebiedsnaam vooraan, want drie
+// bladeren heten allemaal 'Ongoing'.
+function krMaandLabel(m) {
+  const nr = maandNr(m);
+  return nr == null ? '—' : KR_MND[nr % 12] + ' ' + Math.floor(nr / 12);
+}
+
+function krMaandOpties(sel) {
+  const as = krAs();
+  let van = as.van - 12, tot = as.tot + 12;
+  const s = maandNr(sel);
+  if (s != null) { van = Math.min(van, s); tot = Math.max(tot, s); }
+  let h = '';
+  for (let nr = van; nr <= tot; nr++) {
+    const m = nrNaarMaand(nr);
+    h += `<option value="${m}"${m === sel ? ' selected' : ''}>${krMaandLabel(m)}</option>`;
+  }
+  return h;
+}
+
+function krLeafOpties(sel) {
+  const areas = KR_STATE.data.areas;
+  let h = `<option value="">— Kies —</option>`;
+  Object.keys(areas)
+    .sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0))
+    .forEach(aid => {
+      koersLeafSubgroepen({ [aid]: areas[aid] }).forEach(sub => {
+        const label = (areas[aid].name || aid) + ' › ' + sub.pad.join(' › ');
+        h += `<option value="${esc(sub.id)}"${sub.id === sel ? ' selected' : ''}>${esc(label)}</option>`;
+      });
+    });
+  return h;
+}
+
+function krPadVan(sgId) {
+  const areas = KR_STATE.data.areas;
+  for (const aid of Object.keys(areas)) {
+    const sub = koersSubgroepen({ [aid]: areas[aid] }).find(s => s.id === sgId);
+    if (sub) return (areas[aid].name || aid) + ' › ' + sub.pad.join(' › ');
+  }
+  return 'onbekende subgroep';
+}
+
+function krNieuwDoel(opts) {
+  const o = opts || {};
+  const maand = o.maand || huidigeMaand(KR_VANDAAG);
+  KR_STATE.ui.modal = 'doel';
+  KR_STATE.ui.modalData = { isNew: true, subgroupId: o.subgroupId || '', title: o.titel || '',
+    startMonth: maand, endMonth: maand, status: 'gepland', completedAt: '', isPriority: false };
+  KR_STATE.ui.modalExtra = null;
+  KR_STATE.ui.modalDirty = false;
+  KR_STATE.ui.headerMenu = false;
+  renderModal();
+}
+
+function krOpenDoel(id) {
+  const g = KR_STATE.data.goals[id];
+  if (!g) return;
+  KR_STATE.ui.modal = 'doel';
+  KR_STATE.ui.modalData = Object.assign({}, g, { id });
+  KR_STATE.ui.modalExtra = null;
+  KR_STATE.ui.modalDirty = false;
+  renderModal();
+}
+
+function renderDoelModal(c) {
+  const d = KR_STATE.ui.modalData;
+  if (!d) return '';
+  const mist = v => !v || !String(v).trim();
+  const lab = (txt, fout) => `<label${fout ? ` style="color:${c.rood}"` : ''}>${txt}${fout ? ' *' : ''}</label>`;
+  const rand = fout => fout ? ` style="border-color:${c.rood}"` : '';
+  const status = d.status || 'gepland';
+  const doorlopend = status === 'doorlopend';
+  const startNr = maandNr(d.startMonth), eindNr = maandNr(d.endMonth);
+  const startFout = startNr != null && eindNr != null && startNr > eindNr;
+
+  return `
+    <div class="field">${lab('Subgroep', mist(d.subgroupId))}
+      <select onchange="KR.mf('subgroupId',this.value)"${rand(mist(d.subgroupId))}>${krLeafOpties(d.subgroupId)}</select></div>
+    <div class="field">${lab('Titel', mist(d.title))}
+      <input value="${esc(d.title || '')}" oninput="KR.mf('title',this.value)"${rand(mist(d.title))}></div>
+    <div class="kr-veldrij">
+      <div class="field">${lab(doorlopend ? 'Vanaf' : 'Voorbereiding vanaf', startFout)}
+        <select onchange="KR.mf('startMonth',this.value)"${rand(startFout)}>${krMaandOpties(d.startMonth)}</select></div>
+      <div class="field">${lab(doorlopend ? 'Tot en met' : 'Doelmaand', mist(d.endMonth))}
+        <select onchange="KR.mf('endMonth',this.value)"${rand(mist(d.endMonth))}>${krMaandOpties(d.endMonth)}</select></div>
+    </div>
+    <p class="kr-hint">${startFout ? `<span style="color:${c.rood}">De start ligt na de doelmaand.</span> ` : ''}${doorlopend
+      ? 'Doorlopend werk staat als een blok per kwartaal.'
+      : 'Staat de voorbereiding op dezelfde maand als het doel, dan is er geen aanloop — alleen de stempel.'}</p>
+    <div class="field"><label>Status</label>
+      <select onchange="KR.mf('status',this.value)">
+        ${Object.keys(KOERS_STATUS).map(k =>
+          `<option value="${k}"${status === k ? ' selected' : ''}>${esc(KOERS_STATUS[k].label)}</option>`).join('')}
+      </select></div>
+    ${status === 'gehaald' ? `<div class="field"><label>Gehaald in</label>
+      <select onchange="KR.mf('completedAt',this.value)">${krMaandOpties(d.completedAt || d.endMonth)}</select></div>
+      <p class="kr-hint">De maand waarin het doel écht af was. Ligt die na de doelmaand, dan blijft
+       de geplande maand grijs staan als de maand die niet leverde.</p>` : ''}
+    <div class="kr-cb-rij" data-action="toggleDoelPrio">
+      <div class="cb ${d.isPriority ? 'checked' : ''}">${d.isPriority ? '✓' : ''}</div>
+      <span>Prioriteit</span></div>
+    <div style="display:flex;justify-content:${d.isNew ? 'flex-end' : 'space-between'};margin-top:14px">
+      ${d.isNew ? '' : `<button class="btn btn-red" style="font-size:11px" data-action="verwijderDoel" data-id="${esc(d.id)}">Verwijder</button>`}
+      <button class="btn btn-black" data-action="bewaarDoel">Klaar</button>
+    </div>`;
+}
+
+function krBewaarDoel() {
+  const d = KR_STATE.ui.modalData;
+  if (!d) return;
+  if (!d.subgroupId) { showToast('Kies een subgroep'); return; }
+  if (!d.title || !d.title.trim()) { showToast('Geef het doel een titel'); return; }
+  if (!d.endMonth) { showToast('Kies een doelmaand'); return; }
+  const eindNr = maandNr(d.endMonth), startNr = maandNr(d.startMonth);
+  const status = d.status || 'gepland';
+  const rec = {
+    subgroupId: d.subgroupId,
+    title: d.title.trim(),
+    // Een start ná de doelmaand bestaat niet; dan is er simpelweg geen aanloop
+    startMonth: (startNr != null && startNr <= eindNr) ? d.startMonth : d.endMonth,
+    endMonth: d.endMonth,
+    status,
+    completedAt: status === 'gehaald' ? (d.completedAt || d.endMonth) : null,
+    isPriority: !!d.isPriority,
+    updatedAt: today()
+  };
+  const nieuw = !!d.isNew, dirty = KR_STATE.ui.modalDirty;
+  if (nieuw) { rec.createdAt = today(); fbPush('koers/goals', rec); }
+  else fbUpdate('koers/goals/' + d.id, rec);
+  KR_STATE.ui.modalDirty = false;
+  KR_STATE.ui.modal = null; KR_STATE.ui.modalData = null; KR_STATE.ui.modalExtra = null;
+  renderModal();
+  if (nieuw) showToast('Doel toegevoegd');
+  else if (dirty) showToast('Opgeslagen');
+}
+
+// Een doel heeft geen koppelingen, dus geen impact-dialoog — wel een undo,
+// want de hele kopie zit al in het geheugen.
+function krVerwijderDoel(id) {
+  const g = KR_STATE.data.goals[id];
+  if (!g) return;
+  const kopie = JSON.parse(JSON.stringify(g));
+  showConfirm(`Doel "${g.title || ''}" verwijderen?`, () => {
+    KR_STATE.ui.modalDirty = false;
+    KR_STATE.ui.modal = null; KR_STATE.ui.modalData = null; KR_STATE.ui.modalExtra = null;
+    renderModal();
+    fbRemove('koers/goals/' + id);
+    showToast('Doel verwijderd', () => fbSet('koers/goals/' + id, kopie));
+  }, { yes: 'Verwijder' });
+}
+
+// ─── Open beslissingen ──────────────────────────
+// De doelmaand is voorbij en er is niets gekozen. Dat is bewust tijdelijk:
+// het alarm hoort weg bij de eerstvolgende review.
+function krOpenBeslissingen() {
+  return objToArr(KR_STATE.data.goals)
+    .filter(g => koersStatus(g, KR_VANDAAG) === 'beslissing-open')
+    .sort((a, b) => (maandNr(a.endMonth) || 0) - (maandNr(b.endMonth) || 0));
+}
+
+function krOpenBeslissingenModal() {
+  KR_STATE.ui.modal = 'beslissingen';
+  KR_STATE.ui.modalData = null;
+  KR_STATE.ui.modalExtra = null;
+  KR_STATE.ui.modalDirty = false;
+  KR_STATE.ui.headerMenu = false;
+  renderModal();
+}
+
+function renderBeslissingenModal(c) {
+  const lijst = krOpenBeslissingen();
+  if (!lijst.length) {
+    return `<p style="font-size:13px;font-weight:300;line-height:1.6">Niets open. Elke doelmaand
+      die voorbij is, is afgehandeld.</p>`;
+  }
+  const nu = huidigeMaand(KR_VANDAAG);
+  return `<p class="kr-hint" style="margin-top:0">Deze doelen hadden hun doelmaand moeten halen.
+      Kies per doel wat er gebeurd is; zolang je niet kiest, staat de cel geel met een rode rand.</p>
+    <table class="kr-bes"><thead><tr>
+      <th>Doel</th><th>Doelmaand</th><th>Gehaald in</th><th></th>
+    </tr></thead><tbody>
+    ${lijst.map(g => `<tr>
+        <td><div>${esc(g.title || '(zonder titel)')}</div>
+            <div class="kr-pad">${esc(krPadVan(g.subgroupId))}</div></td>
+        <td>${krMaandLabel(g.endMonth)}</td>
+        <td><select data-bm="${esc(g.id)}">${krMaandOpties(nu)}</select></td>
+        <td class="kr-bes-knoppen">
+          <button class="btn btn-xs btn-black" data-action="beslisGehaald" data-id="${esc(g.id)}">Gehaald</button>
+          <button class="btn btn-xs btn-grey" data-action="beslisBijgesteld" data-id="${esc(g.id)}">Bijgesteld</button>
+          <button class="btn btn-xs btn-grey" data-action="beslisVerschoven" data-id="${esc(g.id)}">Verschoven</button>
+        </td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function krZetStatus(id, status, completedAt) {
+  const g = KR_STATE.data.goals[id];
+  if (!g) return;
+  const rec = { status, updatedAt: today(),
+                completedAt: status === 'gehaald' ? (completedAt || huidigeMaand(KR_VANDAAG)) : null };
+  fbUpdate('koers/goals/' + id, rec);
+  // Meteen lokaal bijwerken, zodat de lijst niet op Firebase wacht
+  Object.assign(g, rec);
+  renderModal();
+  if (status === 'verschoven') {
+    // Het stempel blijft op de oude plek staan; het werk zelf wordt een nieuw doel
+    showConfirm(`"${g.title || 'Dit doel'}" staat nu als verschoven. Het werk zelf wordt een nieuw doel — nu aanmaken?`,
+      () => krNieuwDoel({ subgroupId: g.subgroupId, titel: g.title, maand: huidigeMaand(KR_VANDAAG) }),
+      { yes: 'Nieuw doel', no: 'Niet nu' });
+  } else {
+    showToast(status === 'gehaald' ? 'Doel gehaald' : 'Doel bijgesteld');
+  }
+}
+
+// ─── Modals ─────────────────────────────────────
+// Zelfde machinerie als Koppelbaas: één renderModal() met een switch, een
+// overlay die alleen sluit als muis én klik erop landden, en velden die
+// rechtstreeks in de buffer schrijven zonder te hertekenen.
+let _krConfirmCb = null;
+let _krConfirmPrev = null;
+
+function showConfirm(msg, onYes, labels) {
+  _krConfirmPrev = { modal: KR_STATE.ui.modal, modalData: KR_STATE.ui.modalData,
+                     modalExtra: KR_STATE.ui.modalExtra, dirty: KR_STATE.ui.modalDirty };
+  _krConfirmCb = onYes;
+  KR_STATE.ui.modal = 'sysConfirm';
+  KR_STATE.ui.modalData = { confirmMsg: msg, confirmYes: labels && labels.yes, confirmNo: labels && labels.no };
+  KR_STATE.ui.modalExtra = null;
+  KR_STATE.ui.modalDirty = false;
+  renderModal();
+}
+
+// Terug naar waar de bevestiging vandaan kwam
+function krConfirmTerug() {
+  _krConfirmCb = null;
+  const p = _krConfirmPrev;
+  _krConfirmPrev = null;
+  if (p) {
+    KR_STATE.ui.modal = p.modal; KR_STATE.ui.modalData = p.modalData;
+    KR_STATE.ui.modalExtra = p.modalExtra; KR_STATE.ui.modalDirty = p.dirty;
+  } else {
+    KR_STATE.ui.modal = null; KR_STATE.ui.modalData = null;
+    KR_STATE.ui.modalExtra = null; KR_STATE.ui.modalDirty = false;
+  }
+  renderModal();
+}
+
+function renderModal() {
+  const mc = document.getElementById('kr-modal');
+  const modal = KR_STATE.ui.modal;
+  if (!modal) { mc.innerHTML = ''; return; }
+  const c = C();
+  let w = 460, title = '', body = '';
+
+  switch (modal) {
+    case 'doel':
+      title = (KR_STATE.ui.modalData || {}).isNew ? 'Nieuw doel' : 'Doel';
+      body = renderDoelModal(c); break;
+    case 'beslissingen':
+      w = 640; title = 'Open beslissingen'; body = renderBeslissingenModal(c); break;
+    case 'sysConfirm': {
+      w = 380; title = 'Bevestigen';
+      const d = KR_STATE.ui.modalData || {};
+      body = `<p style="font-size:13px;font-weight:300;line-height:1.5;margin-bottom:14px">${esc(d.confirmMsg || '')}</p>
+        <div style="display:flex;justify-content:flex-end;gap:6px">
+          <button class="btn btn-grey" data-action="sysConfirmNo">${esc(d.confirmNo || 'Annuleer')}</button>
+          <button class="btn btn-black" data-action="sysConfirmYes">${esc(d.confirmYes || 'Ja')}</button>
+        </div>`;
+      break;
+    }
+  }
+
+  let html = `<div class="modal-overlay" onmousedown="this._mdTarget=event.target"`
+    + ` onclick="if(event.target===this&&this._mdTarget===this)KR.closeModal()" data-action="modalBody">`
+    + `<div class="modal" style="max-width:${w}px" data-action="modalBody">`
+    + `<div class="modal-head"><h3>${title}</h3>`
+    + `<button class="btn-icon" style="font-size:18px" data-action="closeModal">✕</button></div>`
+    + `<div class="modal-body">${body}</div></div></div>`;
+
+  const mb = mc.querySelector('.modal-body');
+  const st = mb ? mb.scrollTop : 0;
+  mc.innerHTML = html;
+  const mb2 = mc.querySelector('.modal-body');
+  if (mb2 && st) mb2.scrollTop = st;
+}
+
+KR.closeModal = function() {
+  const sluit = () => {
+    KR_STATE.ui.modal = null; KR_STATE.ui.modalData = null; KR_STATE.ui.modalExtra = null;
+    renderModal();
+  };
+  if (KR_STATE.ui.modalDirty) {
+    showConfirm('Wijzigingen niet opgeslagen. Toch sluiten?', () => {
+      KR_STATE.ui.modalDirty = false; sluit();
+    });
+    return;
+  }
+  sluit();
+};
+
+// Velden schrijven rechtstreeks in de buffer en hertekenen niet — anders
+// verlies je je cursor of klapt op mobiel het toetsenbord dicht. Alleen wat
+// de vórm van het formulier verandert hertekent.
+KR.mf = function(field, value) {
+  const d = KR_STATE.ui.modalData;
+  if (!d) return;
+  d[field] = value;
+  if (KR_STATE.ui.modal !== 'sysConfirm') KR_STATE.ui.modalDirty = true;
+  if (field === 'status' || field === 'isPriority' || field === 'startMonth' || field === 'endMonth') renderModal();
+};
+
 // ─── Schil ──────────────────────────────────────
 function renderHeader(c) {
+  const open = krOpenBeslissingen().length;
+  const zwart = KR_STATE.ui.dark ? '#444' : '#000';
   return `<div class="header">
     ${renderBrand('STRATEGIE', 'Koers')}
     <div class="header-right">
-      ${renderHeaderMenu({ dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c })}
+      <button data-noprint title="Open beslissingen" class="btn header-btn"
+        style="background:${open ? c.rood : zwart}" data-action="showBeslissingen">
+        <span class="header-icon">${ico('alert',18)}</span> ${open}</button>
+      <button data-noprint title="Nieuw doel" class="btn header-btn" style="background:${zwart}"
+        data-action="nieuwDoel"><span class="header-icon" style="font-size:18px;line-height:1">+</span>
+        <span class="kr-btn-lang">Nieuw doel</span></button>
+      <div data-noprint>
+        ${renderHeaderMenu({ dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c })}
+      </div>
     </div>
   </div>` + renderAppSwitcher('koers') + renderToolbar();
 }
@@ -573,6 +924,10 @@ function render() {
   const mld = document.getElementById('kr-melding');
   mld.textContent = KR_STATE.ui.melding;
   mld.classList.toggle('zicht', !!KR_STATE.ui.melding);
+  // Typ je in de modal, dan blijft die staan: een Firebase-update mag je
+  // cursor niet slopen (en op mobiel niet het toetsenbord dichtklappen).
+  const ae = document.activeElement;
+  if (!(ae && ae.closest('.modal-body'))) renderModal();
 }
 
 // Alles wat van buiten komt (drie Firebase-listeners) gaat hierlangs, zodat
@@ -614,8 +969,61 @@ function setupEventListeners() {
         render(); break;
       case 'naarVandaag':
         krScrollNaarVandaag(true); break;
+
+      // ─── Doelen ───
+      case 'nieuwDoel':
+        krNieuwDoel(); break;
+      case 'nieuwInCel': {
+        // Welke maand is aangeklikt? De kolombreedte staat in CSS, dus meten
+        const m = krMaten(), as = krAs();
+        const r = el.getBoundingClientRect();
+        const idx = Math.floor((e.clientX - r.left) / m.col);
+        const nr = as.van + Math.max(0, Math.min(as.n - 1, idx));
+        krNieuwDoel({ subgroupId: el.dataset.sg, maand: nrNaarMaand(nr) });
+        break;
+      }
+      case 'openDoel':
+        krOpenDoel(el.dataset.id); break;
+      case 'bewaarDoel':
+        krBewaarDoel(); break;
+      case 'verwijderDoel':
+        krVerwijderDoel(el.dataset.id); break;
+      case 'toggleDoelPrio':
+        KR.mf('isPriority', !(KR_STATE.ui.modalData || {}).isPriority); break;
+
+      // ─── Open beslissingen ───
+      case 'showBeslissingen':
+        krOpenBeslissingenModal(); break;
+      case 'beslisGehaald': {
+        const sel = document.querySelector(`select[data-bm="${el.dataset.id}"]`);
+        krZetStatus(el.dataset.id, 'gehaald', sel ? sel.value : null);
+        break;
+      }
+      case 'beslisBijgesteld':
+        krZetStatus(el.dataset.id, 'bijgesteld'); break;
+      case 'beslisVerschoven':
+        krZetStatus(el.dataset.id, 'verschoven'); break;
+
+      // ─── Modals ───
+      case 'closeModal':
+        KR.closeModal(); break;
+      case 'sysConfirmYes':
+        if (_krConfirmCb) { const cb = _krConfirmCb; _krConfirmCb = null; _krConfirmPrev = null; cb(); }
+        break;
+      case 'sysConfirmNo':
+        krConfirmTerug(); break;
+      case 'modalBody':
+        break;
     }
   });
+
+  // Escape sluit de modal; een bevestiging valt terug naar waar hij vandaan kwam
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !KR_STATE.ui.modal) return;
+    if (KR_STATE.ui.modal === 'sysConfirm') krConfirmTerug();
+    else KR.closeModal();
+  });
+
   window.addEventListener('resize', renderVeilig);
 }
 
