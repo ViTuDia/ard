@@ -6,10 +6,10 @@
 // ─── De apps in deze repo ───────────────────────
 // Eén lijst, zodat een nieuwe app op één plek wordt toegevoegd.
 const ARD_APPS = [
-  { id: 'koers',      naam: 'Koers',      file: 'koers.html',      omschrijving: 'Kwartaaldoelen en planning' },
-  { id: 'koppelbaas', naam: 'Koppelbaas', file: 'koppelbaas.html', omschrijving: 'Ontwikkelaars koppelen aan kansen' },
-  { id: 'kas',        naam: 'Kas',        file: 'kas.html',        omschrijving: 'Facturatie en cash forecast' },
-  { id: 'inkopper',   naam: 'In-Kopper',  file: 'inkopper.html',   omschrijving: 'Nieuwsberichten op de website plaatsen' },
+  { id: 'koers',      naam: 'Koers',      file: 'koers.html',      icon: 'compass',  omschrijving: 'Kwartaaldoelen en planning' },
+  { id: 'koppelbaas', naam: 'Koppelbaas', file: 'koppelbaas.html', icon: 'kanban',   omschrijving: 'Ontwikkelaars koppelen aan kansen' },
+  { id: 'kas',        naam: 'Kas',        file: 'kas.html',        icon: 'banknote', omschrijving: 'Facturatie en cash forecast' },
+  { id: 'inkopper',   naam: 'In-Kopper',  file: 'inkopper.html',   icon: 'pencil',   omschrijving: 'Nieuwsberichten op de website plaatsen' },
 ];
 
 // Pills onder de gouden header. activeId = de app waar je nu bent.
@@ -112,7 +112,10 @@ banknote:'<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middl
 pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
 mapPin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
 user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'
+search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+compass:'<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+kanban:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+arrowRight:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'
 };return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle">${p[name]||''}</svg>`;}
 
 // ─── Toast ──────────────────────────────────────

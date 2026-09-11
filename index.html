@@ -15,23 +15,50 @@
   <script src="shared/helpers.js"></script>
   <style>
     #app { display: none; flex-direction: column; min-height: 100vh; }
-    .router-body { flex: 1; padding: 40px 24px; }
+    /* Het blok staat verticaal gecentreerd, zodat een breed scherm niet
+       onderaan half leeg blijft. */
+    .router-body { flex: 1; display: flex; align-items: center; padding: 40px 24px; }
     /* Eén kolom, breed, en meeschalend: de tegels vullen de beschikbare
        breedte tot 960px en krimpen daaronder mee met het venster. */
     .router-inner { width: 100%; max-width: 960px; margin: 0 auto; }
     .tiles { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Een rij van icoon — tekst — pijl, zodat de volle breedte iets doet
+       in plaats van leeg te blijven naast de tekst. */
     .tile {
-      display: block; width: 100%; padding: 22px 24px; border-radius: 6px; text-decoration: none;
+      display: flex; align-items: center; gap: 22px;
+      width: 100%; padding: 24px 28px; border-radius: 6px; text-decoration: none;
       background: var(--kaart); border: 1px solid var(--kaartBorder); color: var(--txtPrimary);
-      transition: border-color 0.15s, transform 0.15s;
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
     }
-    .tile:hover { border-color: var(--geel); transform: translateY(-2px); }
-    .tile-naam { font-size: 17px; font-weight: 500; }
+    .tile:hover {
+      border-color: var(--geel); transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    .tile-icon {
+      flex-shrink: 0; width: 52px; height: 52px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(217,163,0,0.1); color: var(--geel);
+      transition: background 0.15s;
+    }
+    .tile:hover .tile-icon { background: var(--geel); color: #000; }
+    .tile-tekst { flex: 1; min-width: 0; }
+    .tile-naam { font-size: 19px; font-weight: 500; }
     .tile-naam .slash { color: var(--geel); margin-right: 6px; }
-    .tile-oms { font-size: 12px; color: var(--txtSecondary); font-weight: 300; margin-top: 6px; }
+    .tile-oms { font-size: 13px; color: var(--txtSecondary); font-weight: 300; margin-top: 4px; }
+    .tile-pijl {
+      flex-shrink: 0; color: var(--zachtgrijs);
+      transition: color 0.15s, transform 0.15s;
+    }
+    .tile:hover .tile-pijl { color: var(--geel); transform: translateX(4px); }
+
     @media (max-width: 767px) {
-      .router-body { padding: 20px 14px; }
-      .tile { padding: 18px 16px; }
+      .router-body { padding: 20px 14px; align-items: flex-start; }
+      .tile { padding: 16px; gap: 14px; }
+      .tile-icon { width: 42px; height: 42px; }
+      .tile-naam { font-size: 17px; }
+      .tile-oms { font-size: 12px; }
+      .tile-pijl { display: none; }
     }
   </style>
 </head>
@@ -135,8 +162,12 @@ function render() {
   </div>`;
   document.getElementById('tiles').innerHTML = ARD_APPS.map(a =>
     `<a class="tile" href="${a.file}">
-       <div class="tile-naam"><span class="slash">/</span>${esc(a.naam)}</div>
-       <div class="tile-oms">${esc(a.omschrijving)}</div>
+       <div class="tile-icon">${ico(a.icon, 26)}</div>
+       <div class="tile-tekst">
+         <div class="tile-naam"><span class="slash">/</span>${esc(a.naam)}</div>
+         <div class="tile-oms">${esc(a.omschrijving)}</div>
+       </div>
+       <div class="tile-pijl">${ico('arrowRight', 20)}</div>
      </a>`
   ).join('');
 }
