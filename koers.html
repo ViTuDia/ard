@@ -9,11 +9,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <link rel="stylesheet" href="shared/theme.css?v=3">
-  <script src="shared/firebase.js?v=3"></script>
-  <script src="shared/theme.js?v=3"></script>
-  <script src="shared/helpers.js?v=3"></script>
-  <script src="shared/koers-model.js?v=3"></script>
+  <link rel="stylesheet" href="shared/theme.css?v=4">
+  <script src="shared/firebase.js?v=4"></script>
+  <script src="shared/theme.js?v=4"></script>
+  <script src="shared/helpers.js?v=4"></script>
+  <script src="shared/koers-model.js?v=4"></script>
   <style>
     /* ─── Schil ──────────────────────────────────────
        Alleen het raster scrollt; toolbar, legenda en footer staan stil. */
@@ -164,6 +164,18 @@
     .kr-bes .kr-pad { font-size: 10px; font-weight: 300; color: var(--txtSecondary); }
     .kr-bes-knoppen { white-space: nowrap; text-align: right; }
     .kr-bes-knoppen .btn { margin-left: 4px; }
+
+    /* Beheer: de boom met een invoerveld per naam */
+    .kr-bh-rij { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+    .kr-bh-rij input { flex: 1; min-width: 0; padding: 5px 8px; font-size: 12px; font-family: inherit;
+                       border: 1px solid transparent; border-radius: 4px;
+                       background: transparent; color: var(--txtPrimary); }
+    .kr-bh-rij input:hover { border-color: var(--zachtgrijs); }
+    .kr-bh-rij input:focus { outline: none; border-color: var(--geel); background: var(--modalBg); }
+    .kr-bh-area input { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .kr-bh-rij .btn-icon { padding: 2px 5px; font-size: 12px; min-height: 0; }
+    .kr-bh-add { font-size: 11px; font-weight: 300; color: var(--txtSecondary); cursor: pointer; padding: 3px 0; }
+    .kr-bh-add:hover { color: var(--geel); }
 
     /* ─── Mobiel ─────────────────────────────────── */
     @media (max-width: 767px) {
@@ -787,6 +799,206 @@ function krZetStatus(id, status, completedAt) {
   }
 }
 
+// ─── Gebieden en subgroepen beheren ─────────────
+// De indeling staat genest in /koers/areas, doelen hangen via subgroupId aan
+// een blad. Hernoemen gaat inline (onchange, dus geen hertekening per letter),
+// herordenen met ▲▼ — slepen zou hier het bug-gevoeligste stuk van de app zijn
+// en werkt op touch niet.
+function krBeheerOpen() {
+  KR_STATE.ui.modal = 'beheer';
+  KR_STATE.ui.modalData = null;
+  KR_STATE.ui.modalExtra = null;
+  KR_STATE.ui.modalDirty = false;
+  KR_STATE.ui.headerMenu = false;
+  renderModal();
+}
+
+// Een vers id dat nergens anders in de boom voorkomt: twee subgroepen met
+// dezelfde id zouden dezelfde doelen in twee rijen tekenen.
+function krNieuwId() {
+  const areas = KR_STATE.data.areas;
+  const bestaat = id => !!koersDbPad(areas, id);
+  let id = uid();
+  while (bestaat(id)) id = uid();
+  return id;
+}
+
+// Het object waarin een id zit, plus het pad ernaartoe — nodig om `order`
+// over de hele broer-set te herschrijven.
+function krBroers(id) {
+  const areas = KR_STATE.data.areas;
+  const pad = koersDbPad(areas, id);
+  if (!pad) return null;
+  const delen = pad.split('/');
+  delen.pop();
+  const ouderPad = delen.join('/');
+  let obj = { areas: areas };
+  ouderPad.split('/').forEach(k => { obj = obj && obj[k]; });
+  return obj ? { pad: ouderPad, obj } : null;
+}
+
+function krVoegArea() {
+  const areas = KR_STATE.data.areas;
+  const order = Object.keys(areas).reduce((m, id) => Math.max(m, areas[id].order || 0), 0) + 1;
+  fbSet('koers/areas/' + krNieuwId(), { name: 'Nieuw gebied', order });
+  showToast('Gebied toegevoegd');
+}
+
+function krVoegSubgroep(ouderId) {
+  const areas = KR_STATE.data.areas;
+  const ouderPad = koersDbPad(areas, ouderId);
+  if (!ouderPad) return;
+  let ouder = { areas: areas };
+  ouderPad.split('/').forEach(k => { ouder = ouder && ouder[k]; });
+  const kinderen = (ouder && ouder.subgroups) || {};
+  const order = Object.keys(kinderen).reduce((m, id) => Math.max(m, kinderen[id].order || 0), 0) + 1;
+  fbSet('koers/' + ouderPad + '/subgroups/' + krNieuwId(), { name: 'Nieuwe subgroep', order });
+  showToast('Subgroep toegevoegd');
+}
+
+KR.beheerNaam = function(id, naam) {
+  const pad = koersDbPad(KR_STATE.data.areas, id);
+  if (!pad) return;
+  const schoon = (naam || '').trim();
+  if (!schoon) { renderModal(); return; }   // leeg accepteren we niet; zet terug
+  fbSet('koers/' + pad + '/name', schoon);
+  showToast('Naam gewijzigd');
+};
+
+// Wisselt met de buur en schrijft order als 1..n over de hele broer-set,
+// zodat er nooit twee dezelfde nummers ontstaan.
+function krVerschuif(id, richting) {
+  const b = krBroers(id);
+  if (!b) return;
+  const ids = Object.keys(b.obj).sort((x, y) => (b.obj[x].order || 0) - (b.obj[y].order || 0));
+  const i = ids.indexOf(id);
+  const j = i + richting;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  ids.splice(j, 0, ids.splice(i, 1)[0]);
+  const updates = {};
+  ids.forEach((sid, k) => { updates['koers/' + b.pad + '/' + sid + '/order'] = k + 1; });
+  fbMulti(updates);
+}
+
+// Verwijderen met gevolgen. Kinderen of doelen blokkeren; voor doelen staat de
+// uitweg in hetzelfde venster. Cascade zou hier fout zijn: dit zijn met de
+// hand getypte strategische doelen, geen afgeleide records.
+function krVraagVerwijder(id) {
+  const areas = KR_STATE.data.areas;
+  const pad = koersDbPad(areas, id);
+  if (!pad) return;
+  let obj = { areas: areas };
+  pad.split('/').forEach(k => { obj = obj && obj[k]; });
+  if (!obj) return;
+  const kinderen = Object.keys(obj.subgroups || {}).length;
+  const doelen = objToArr(KR_STATE.data.goals).filter(g => g.subgroupId === id);
+  if (!kinderen && !doelen.length) {
+    showConfirm(`"${obj.name || id}" verwijderen?`, () => {
+      _krConfirmPrev = null;
+      fbRemove('koers/' + pad);
+      KR_STATE.ui.modal = 'beheer'; KR_STATE.ui.modalData = null; renderModal();
+      showToast('Verwijderd');
+    }, { yes: 'Verwijder' });
+    return;
+  }
+  KR_STATE.ui.modal = 'verwijderSub';
+  KR_STATE.ui.modalData = { id, naam: obj.name || id, kinderen, doelen: doelen.length,
+                            naarId: '', isArea: pad.indexOf('/subgroups/') === -1 };
+  KR_STATE.ui.modalDirty = false;
+  renderModal();
+}
+
+function renderVerwijderModal(c) {
+  const d = KR_STATE.ui.modalData;
+  if (!d) return '';
+  if (d.kinderen) {
+    return `<p style="font-size:13px;font-weight:300;line-height:1.6">
+        "${esc(d.naam)}" heeft ${d.kinderen} onderliggende ${d.kinderen === 1 ? 'subgroep' : 'subgroepen'}.
+        Verwijder of verplaats die eerst.</p>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-black" data-action="terugNaarBeheer">Terug</button></div>`;
+  }
+  const opties = krLeafOpties('').replace('— Kies —', '— Kies een subgroep —');
+  return `<p style="font-size:13px;font-weight:300;line-height:1.6">
+      "${esc(d.naam)}" heeft ${d.doelen} ${d.doelen === 1 ? 'doel. Dat moet' : 'doelen. Die moeten'}
+      eerst ergens anders heen — een doel zonder bestaande subgroep verdwijnt uit het raster.</p>
+    <div class="field" style="margin-top:14px"><label>Verplaats naar</label>
+      <select onchange="KR.mf('naarId',this.value)">${opties}</select></div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px">
+      <button class="btn btn-grey" data-action="terugNaarBeheer">Terug</button>
+      <button class="btn btn-red" data-action="verplaatsEnVerwijder">Verplaatsen en verwijderen</button>
+    </div>`;
+}
+
+function krVerplaatsEnVerwijder() {
+  const d = KR_STATE.ui.modalData;
+  if (!d) return;
+  if (!d.naarId || d.naarId === d.id) { showToast('Kies waar de doelen heen moeten'); return; }
+  const pad = koersDbPad(KR_STATE.data.areas, d.id);
+  if (!pad) return;
+  const updates = {};
+  objToArr(KR_STATE.data.goals).filter(g => g.subgroupId === d.id).forEach(g => {
+    updates['koers/goals/' + g.id + '/subgroupId'] = d.naarId;
+    updates['koers/goals/' + g.id + '/updatedAt'] = today();
+  });
+  updates['koers/' + pad] = null;
+  fbMulti(updates);
+  KR_STATE.ui.modal = 'beheer'; KR_STATE.ui.modalData = null;
+  renderModal();
+  showToast(`${d.doelen} ${d.doelen === 1 ? 'doel' : 'doelen'} verplaatst`);
+}
+
+function renderBeheerModal(c) {
+  const areas = KR_STATE.data.areas;
+  const ids = Object.keys(areas).sort((a, b) => (areas[a].order || 0) - (areas[b].order || 0));
+  const knoppen = (id, eerste, laatste) =>
+    `<span style="white-space:nowrap">
+      <button class="btn-icon" title="Omhoog" data-action="beheerOmhoog" data-id="${esc(id)}"${eerste ? ' disabled style="opacity:.25"' : ''}>▴</button>
+      <button class="btn-icon" title="Omlaag" data-action="beheerOmlaag" data-id="${esc(id)}"${laatste ? ' disabled style="opacity:.25"' : ''}>▾</button>
+      <button class="btn-icon" title="Verwijderen" style="color:${c.rood}" data-action="beheerVerwijder" data-id="${esc(id)}">✕</button>
+    </span>`;
+
+  let h = `<p class="kr-hint" style="margin-top:0">Namen pas je hier direct aan. Doelen hangen
+      alleen aan de diepste subgroepen; een subgroep met doelen kun je niet verwijderen zonder
+      die doelen eerst te verplaatsen.</p>
+    <div id="modal-scroll-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--zachtgrijs);border-radius:6px;padding:8px">`;
+
+  ids.forEach((aid, ai) => {
+    const a = areas[aid];
+    h += `<div class="kr-bh-rij kr-bh-area">
+        <input value="${esc(a.name || '')}" onchange="KR.beheerNaam('${esc(aid)}',this.value)">
+        ${knoppen(aid, ai === 0, ai === ids.length - 1)}
+      </div>`;
+    const subs = koersSubgroepen({ [aid]: a });
+    subs.forEach(sub => {
+      const b = krBroers(sub.id);
+      const broerIds = b ? Object.keys(b.obj).sort((x, y) => (b.obj[x].order || 0) - (b.obj[y].order || 0)) : [];
+      const i = broerIds.indexOf(sub.id);
+      h += `<div class="kr-bh-rij" style="padding-left:${12 + (sub.pad.length - 1) * 16}px">
+          <input value="${esc(sub.name || '')}" onchange="KR.beheerNaam('${esc(sub.id)}',this.value)">
+          ${knoppen(sub.id, i === 0, i === broerIds.length - 1)}
+        </div>`;
+      // Een laag erbij kan alleen op laag 1 (max drie lagen) en alleen als er
+      // geen doelen aan hangen: met een kind is het geen blad meer, en dan
+      // zouden die doelen nergens meer getekend worden.
+      const heeftDoelen = objToArr(KR_STATE.data.goals).some(g => g.subgroupId === sub.id);
+      if (sub.pad.length === 1 && !heeftDoelen) {
+        h += `<div class="kr-bh-rij" style="padding-left:28px">
+            <span class="kr-bh-add" data-action="beheerVoegSub" data-id="${esc(sub.id)}">+ Laag eronder</span></div>`;
+      }
+    });
+    h += `<div class="kr-bh-rij" style="padding-left:12px">
+        <span class="kr-bh-add" data-action="beheerVoegSub" data-id="${esc(aid)}">+ Subgroep</span></div>`;
+  });
+
+  h += `</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+      <span class="kr-bh-add" data-action="beheerVoegArea">+ Nieuw gebied</span>
+      <button class="btn btn-black" data-action="closeModal">Klaar</button>
+    </div>`;
+  return h;
+}
+
 // ─── Modals ─────────────────────────────────────
 // Zelfde machinerie als Koppelbaas: één renderModal() met een switch, een
 // overlay die alleen sluit als muis én klik erop landden, en velden die
@@ -833,6 +1045,10 @@ function renderModal() {
       body = renderDoelModal(c); break;
     case 'beslissingen':
       w = 640; title = 'Open beslissingen'; body = renderBeslissingenModal(c); break;
+    case 'beheer':
+      w = 520; title = 'Gebieden en subgroepen'; body = renderBeheerModal(c); break;
+    case 'verwijderSub':
+      w = 440; title = 'Verwijderen'; body = renderVerwijderModal(c); break;
     case 'sysConfirm': {
       w = 380; title = 'Bevestigen';
       const d = KR_STATE.ui.modalData || {};
@@ -898,21 +1114,37 @@ function renderHeader(c) {
         data-action="nieuwDoel"><span class="header-icon" style="font-size:18px;line-height:1">+</span>
         <span class="kr-btn-lang">Nieuw doel</span></button>
       <div data-noprint>
-        ${renderHeaderMenu({ dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c })}
+        ${renderHeaderMenu({ dark: KR_STATE.ui.dark, menuOpen: KR_STATE.ui.headerMenu, c,
+          extra: [{action:'showBeheer', icon:ico('settings',16), label:'Gebieden beheren'}] })}
       </div>
     </div>
   </div>` + renderAppSwitcher('koers') + renderToolbar();
 }
 
+// Doelen die nergens getekend worden: hun subgroep bestaat niet meer, of is
+// geen blad meer (doelen hangen alleen aan bladeren). Zonder melding zouden
+// ze stil uit het raster verdwijnen.
+function krWezen() {
+  const areas = KR_STATE.data.areas;
+  if (!Object.keys(areas).length) return [];
+  const bladeren = {};
+  koersLeafSubgroepen(areas).forEach(s => { bladeren[s.id] = true; });
+  return objToArr(KR_STATE.data.goals).filter(g => !bladeren[g.subgroupId]);
+}
+
 function renderToolbar() {
   const goals = objToArr(KR_STATE.data.goals);
   const open = goals.filter(g => koersStatus(g, KR_VANDAAG) === 'beslissing-open').length;
+  const wezen = krWezen();
   return `<div class="kr-toolbar" data-noprint>
     <button class="btn btn-xs btn-grey" data-action="allesUit">Alles uit</button>
     <button class="btn btn-xs btn-grey" data-action="allesIn">Alles in</button>
     <button class="btn btn-xs btn-grey" data-action="naarVandaag">← Vandaag</button>
     <span class="kr-toolbar-stat">${goals.length} ${goals.length === 1 ? 'doel' : 'doelen'}`
     + (open ? ` · <span style="color:var(--rood)">${open} open beslissing${open === 1 ? '' : 'en'}</span>` : '')
+    + (wezen.length ? ` · <span style="color:var(--rood);cursor:pointer;text-decoration:underline"
+        data-action="toonWees" data-id="${esc(wezen[0].id)}">${wezen.length}
+        ${wezen.length === 1 ? 'doel hangt' : 'doelen hangen'} niet aan een subgroep</span>` : '')
     + `</span>
   </div>`;
 }
@@ -963,10 +1195,9 @@ function setupEventListeners() {
       case 'toggleArea':
         krZetInklap(el.dataset.area); break;
       case 'allesIn':
-        KR_STATE.ui.collapsedAreas = {}; render(); break;
+        krZetAlleInklap(false); break;
       case 'allesUit':
-        Object.keys(KR_STATE.data.areas).forEach(id => { KR_STATE.ui.collapsedAreas[id] = true; });
-        render(); break;
+        krZetAlleInklap(true); break;
       case 'naarVandaag':
         krScrollNaarVandaag(true); break;
 
@@ -1004,6 +1235,26 @@ function setupEventListeners() {
       case 'beslisVerschoven':
         krZetStatus(el.dataset.id, 'verschoven'); break;
 
+      // ─── Beheer ───
+      case 'showBeheer':
+        krBeheerOpen(); break;
+      case 'beheerVoegArea':
+        krVoegArea(); break;
+      case 'beheerVoegSub':
+        krVoegSubgroep(el.dataset.id); break;
+      case 'beheerOmhoog':
+        krVerschuif(el.dataset.id, -1); break;
+      case 'beheerOmlaag':
+        krVerschuif(el.dataset.id, 1); break;
+      case 'beheerVerwijder':
+        krVraagVerwijder(el.dataset.id); break;
+      case 'verplaatsEnVerwijder':
+        krVerplaatsEnVerwijder(); break;
+      case 'terugNaarBeheer':
+        krBeheerOpen(); break;
+      case 'toonWees':
+        krOpenDoel(el.dataset.id); break;
+
       // ─── Modals ───
       case 'closeModal':
         KR.closeModal(); break;
@@ -1027,21 +1278,43 @@ function setupEventListeners() {
   window.addEventListener('resize', renderVeilig);
 }
 
+// In- of uitklappen wordt bewaard in /koers/settings, niet in localStorage:
+// dan staat het op de laptop en de telefoon hetzelfde. Per gebied schrijven,
+// niet het hele object, zodat twee sessies elkaar niet overschrijven.
 function krZetInklap(areaId) {
   if (!areaId) return;
-  if (KR_STATE.ui.collapsedAreas[areaId]) delete KR_STATE.ui.collapsedAreas[areaId];
-  else KR_STATE.ui.collapsedAreas[areaId] = true;
+  const dicht = !KR_STATE.ui.collapsedAreas[areaId];
+  if (dicht) KR_STATE.ui.collapsedAreas[areaId] = true;
+  else delete KR_STATE.ui.collapsedAreas[areaId];
   render();
+  fbSet('koers/settings/collapsedAreas/' + areaId, dicht ? true : null);
+}
+
+function krZetAlleInklap(dicht) {
+  const updates = {};
+  Object.keys(KR_STATE.data.areas).forEach(id => {
+    if (dicht) KR_STATE.ui.collapsedAreas[id] = true;
+    updates['koers/settings/collapsedAreas/' + id] = dicht ? true : null;
+  });
+  if (!dicht) KR_STATE.ui.collapsedAreas = {};
+  render();
+  fbMulti(updates);
 }
 
 // ─── Data ───────────────────────────────────────
-// Staat er nog geen indeling, dan komt die uit shared/koers-model.js.
-// Verder niets: de indeling ligt vast, dus een lege /koers/areas is het
-// enige geval waarin er iets te schrijven valt.
+// Eenmalige bootstrap: staat er nog geen indeling, dan komt die uit
+// shared/koers-model.js. Het vlaggetje settings/seeded is nodig sinds de
+// indeling in de app te beheren is — anders krijg je je weggegooide gebieden
+// bij de volgende laadbeurt gewoon terug. Wil je opnieuw seeden, haal dan in
+// de Firebase Console zowel /koers/areas als /koers/settings/seeded weg.
 async function seedIndienNodig() {
-  const snap = await db.ref('koers/areas').once('value');
-  if (snap.val()) return false;
+  const [areas, seeded] = await Promise.all([
+    db.ref('koers/areas').once('value'),
+    db.ref('koers/settings/seeded').once('value')
+  ]);
+  if (areas.val() || seeded.val()) return false;
   await fbSet('koers/areas', KOERS_AREAS_DEFAULT);
+  await fbSet('koers/settings/seeded', today());
   return true;
 }
 
@@ -1052,6 +1325,11 @@ function luisterNaarData() {
   });
   db.ref('koers/goals').on('value', snap => {
     KR_STATE.data.goals = snap.val() || {};
+    renderVeilig();
+  });
+  db.ref('koers/settings').on('value', snap => {
+    KR_STATE.data.settings = snap.val() || {};
+    KR_STATE.ui.collapsedAreas = Object.assign({}, KR_STATE.data.settings.collapsedAreas);
     renderVeilig();
   });
 }
