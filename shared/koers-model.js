@@ -213,25 +213,3 @@ function koersSubgroepen(areas) {
 function koersLeafSubgroepen(areas) {
   return koersSubgroepen(areas).filter(s => s.leaf);
 }
-
-// ─── Pad in de database ─────────────────────────
-// Id's zijn plat, de opslag is genest. Om te hernoemen, te herordenen of te
-// verwijderen heb je dus het pad onder /koers/ nodig:
-//   koersDbPad(areas, 'comm') → 'areas/clients/subgroups/comm'
-// Heet bewust anders dan de `pad` uit koersSubgroepen(): dat zijn namen om te
-// laten zien, dit is een databasepad om naar te schrijven.
-function koersDbPad(areas, id) {
-  if (!areas || !id) return null;
-  const zoek = (obj, prefix) => {
-    for (const key of Object.keys(obj || {})) {
-      if (key === id) return prefix + key;
-      const kinderen = obj[key] && obj[key].subgroups;
-      if (kinderen) {
-        const diep = zoek(kinderen, prefix + key + '/subgroups/');
-        if (diep) return diep;
-      }
-    }
-    return null;
-  };
-  return zoek(areas, 'areas/');
-}
