@@ -36,7 +36,10 @@
        grid-kolommen — er wordt nergens met pixels gerekend om iets te
        plaatsen. Maten staan als variabelen in CSS (ook voor mobiel en
        print); JS leest ze met krMaten() en zet ze nooit. */
-    #kr-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg); }
+    /* touch-action laat het pannen met de vinger staan; slepen doen alleen
+       muis en pen, dus die twee vechten nooit om hetzelfde gebaar. */
+    #kr-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg);
+                 touch-action: pan-x pan-y; }
     #kr-grid {
       --kr-left: 230px; --kr-col: 34px; --kr-bar: 20px; --kr-pad: 6px; --kr-gap: 4px;
       --kr-h1: 22px; --kr-h2: 20px; --kr-h3: 18px; --kr-rowarea: 24px; --kr-rowsub: 26px;
@@ -122,6 +125,12 @@
     .kr-open { border: 2px solid var(--rood); }
     .kr-pijl { align-self: start; display: flex; align-items: center; justify-content: center;
                color: var(--txtPrimary); pointer-events: none; z-index: 1; }
+    /* Slepen: een greep van 6px op de linkerrand verlengt de aanloop, de rest
+       van de balk verplaatst het doel. Alleen muis en pen. */
+    .kr-bar[data-sleep] { cursor: grab; position: relative; }
+    .kr-groen[data-sleep]::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+                                    width: 6px; cursor: ew-resize; }
+    .kr-sleep { opacity: .85; pointer-events: none; }
     /* Titel buiten de balk: in een stempel van één maand past geen tekst.
        pointer-events uit, zodat de cellen eronder bruikbaar blijven. */
     .kr-titel { align-self: start; display: flex; align-items: center; padding-left: 5px;
@@ -242,6 +251,7 @@ const KR_STATE = {
     collapsedAreas: {},
     naarVandaagGedaan: false,
     melding: '',
+    drag: null, wachtendeRender: false,
     // modalData is de edit-buffer: een kopie van het doel, of een vers doel
     // met isNew. Pas bij Klaar gaat het naar Firebase.
     modal: null, modalData: null, modalExtra: null, modalDirty: false
@@ -496,7 +506,11 @@ function krDoelHtml(s, rijNr, as, m) {
   const top = m.pad + s.baan * (m.bar + m.gap);
   const basis = `grid-row:${rijNr};align-self:start;margin-top:${top}px;height:${m.bar}px`;
   const titel = esc(g.title || '(zonder titel)');
-  const klik = ` data-action="openDoel" data-id="${esc(g.id)}" title="${titel}"`;
+  // Gehaald, bijgesteld en verschoven zijn geschiedenis: die sleep je niet,
+  // die bewerk je. Daarmee kan completedAt ook nooit meeschuiven.
+  const sleepbaar = ['gepland', 'beslissing-open', 'doorlopend'].indexOf(cel.status) !== -1
+    && maandNr(g.startMonth) != null && maandNr(g.endMonth) != null;
+  const klik = ` data-action="openDoel" data-id="${esc(g.id)}"${sleepbaar ? ' data-sleep="1"' : ''} title="${titel}"`;
   let h = '', titelIn = false;
 
   if (s.groenVan != null && s.groenTot != null && s.groenTot >= s.groenVan) {
@@ -538,7 +552,8 @@ function krDoelHtml(s, rijNr, as, m) {
   }
 
   if (g.isPriority && s.tot + 1 <= as.tot + 1) {
-    h += `<div class="kr-pijl" style="${basis};grid-column:${kol(s.tot + 1)}/span 1">${KR_PIJL}</div>`;
+    h += `<div class="kr-pijl" data-id="${esc(g.id)}"`
+       + ` style="${basis};grid-column:${kol(s.tot + 1)}/span 1">${KR_PIJL}</div>`;
   }
 
   if (!titelIn) {
@@ -546,7 +561,8 @@ function krDoelHtml(s, rijNr, as, m) {
     const eind = Math.min(s.vrijTot == null || s.vrijTot === Infinity ? as.tot : s.vrijTot, as.tot);
     // Eén kolom (34px) leest als een fout; dan liever niets — de balk heeft een tooltip
     if (eind - start >= 1) {
-      h += `<div class="kr-titel" style="${basis};grid-column:${kol(start)}/span ${eind - start + 1}">`
+      h += `<div class="kr-titel" data-id="${esc(g.id)}"`
+         + ` style="${basis};grid-column:${kol(start)}/span ${eind - start + 1}">`
          + `<span class="kr-lbl">${titel}</span></div>`;
     }
   }
@@ -797,6 +813,177 @@ function krZetStatus(id, status, completedAt) {
   } else {
     showToast(status === 'gehaald' ? 'Doel gehaald' : 'Doel bijgesteld');
   }
+}
+
+// ─── Slepen ─────────────────────────────────────
+// Eén codepad via Pointer Events, maar alleen voor muis en pen. Op een
+// vingerscherm is een maandkolom 26px ≈ 3,4 mm en moet hetzelfde gebaarvlak
+// ook het raster pannen; daar is de modal de weg. Een iPad met trackpad of
+// Pencil meldt zich als mouse/pen en mag dus wel slepen.
+//
+// Tijdens het gebaar wordt er niets naar Firebase geschreven: de preview is
+// puur inline grid-styles. Bij het loslaten valt er één update.
+let _krAutoRaf = null;
+let _krNaSleep = 0;
+
+function krSleepInit() {
+  const scroll = document.getElementById('kr-scroll');
+  scroll.addEventListener('pointerdown', krSleepStart);
+  scroll.addEventListener('pointermove', krSleepBeweeg);
+  scroll.addEventListener('pointerup', krSleepEind);
+  scroll.addEventListener('pointercancel', krSleepEind);
+}
+
+function krSleepStart(e) {
+  if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+  if (e.button !== 0) return;
+  if (KR_STATE.ui.modal) return;
+  const bar = e.target.closest('.kr-bar[data-sleep]');
+  if (!bar) return;
+  const id = bar.dataset.id;
+  const g = KR_STATE.data.goals[id];
+  if (!g) return;
+
+  // De greep van 6px op de linkerrand van de groene balk verlengt de aanloop.
+  // De rechterrand is bewust géén greep: de doelmaand verzetten is een
+  // beslissing, geen gebaar van drie millimeter.
+  //
+  // Meet vanaf de balk zelf, niet met e.offsetX: pak je de balk op de plek
+  // waar de titel staat, dan is het doelwit die span en is offsetX relatief
+  // aan de tekst — dan zou je per ongeluk de aanloop verzetten.
+  const binnen = e.clientX - bar.getBoundingClientRect().left;
+  const mode = (bar.classList.contains('kr-groen') && binnen <= 6) ? 'aanloop' : 'verplaats';
+
+  const elems = [...document.querySelectorAll(`#kr-grid [data-id="${id}"]`)].map(el => ({
+    el,
+    start: parseInt(el.style.gridColumnStart, 10),
+    span: parseInt(String(el.style.gridColumnEnd).replace(/[^0-9]/g, ''), 10) || 1,
+    rij: parseInt(el.style.gridRow, 10),
+    groen: el.classList.contains('kr-groen')
+  })).filter(s => !isNaN(s.start));
+  if (!elems.length) return;
+
+  KR_STATE.ui.drag = { id, mode, elems, cols: 0, sgId: null, gewapend: false,
+                       startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY,
+                       rij: elems[0].rij };
+  try { bar.setPointerCapture(e.pointerId); } catch (err) { /* capture is een extraatje */ }
+  e.preventDefault();
+  if (!_krAutoRaf) _krAutoRaf = requestAnimationFrame(krAutoLus);
+}
+
+function krSleepBeweeg(e) {
+  const d = KR_STATE.ui.drag;
+  if (!d) return;
+  d.x = e.clientX; d.y = e.clientY;
+  // Drempel van 4px: zonder dit sloopt elke tik-om-te-openen zichzelf
+  if (!d.gewapend) {
+    if (Math.abs(e.clientX - d.startX) < 4 && Math.abs(e.clientY - d.startY) < 4) return;
+    d.gewapend = true;
+    d.elems.forEach(s => s.el.classList.add('kr-sleep'));
+  }
+  krSleepPreview();
+}
+
+function krSleepPreview() {
+  const d = KR_STATE.ui.drag;
+  if (!d || !d.gewapend) return;
+  const m = krMaten(), as = krAs();
+  let cols = Math.round((d.x - d.startX) / m.col);
+
+  // Binnen de as blijven (de laatste kolom is de overloop voor pijl en titel)
+  const minStart = Math.min.apply(null, d.elems.map(s => s.start));
+  const maxEind = Math.max.apply(null, d.elems.map(s => s.start + s.span - 1));
+  if (d.mode === 'verplaats') {
+    cols = Math.max(cols, 2 - minStart);
+    cols = Math.min(cols, (1 + as.n) - maxEind);
+  } else {
+    const groen = d.elems.find(s => s.groen);
+    if (!groen) return;
+    cols = Math.max(cols, 2 - groen.start);          // niet voorbij de linkerrand
+    cols = Math.min(cols, groen.span - 1);           // minstens één maand aanloop
+  }
+  d.cols = cols;
+
+  // Naar welke bladrij wijst de cursor? Een ingeklapt gebied heeft geen
+  // [data-sg], dus dan houden we de laatste geldige rij vast.
+  if (d.mode === 'verplaats') {
+    const onder = document.elementFromPoint(d.x, d.y);
+    const rijEl = onder && onder.closest('.kr-rij[data-sg]');
+    if (rijEl) {
+      d.sgId = rijEl.dataset.sg;
+      d.rij = parseInt(rijEl.style.gridRow, 10);
+    }
+  }
+
+  d.elems.forEach(s => {
+    if (d.mode === 'aanloop') {
+      if (!s.groen) return;
+      s.el.style.gridColumnStart = s.start + cols;
+      s.el.style.gridColumnEnd = 'span ' + (s.span - cols);
+      return;
+    }
+    s.el.style.gridColumnStart = s.start + cols;
+    if (d.rij) s.el.style.gridRow = d.rij;
+  });
+}
+
+// Sleep je tegen de rand, dan schuift het raster mee. startX schuift mee met
+// de scroll, zodat de maand onder de cursor blijft kloppen.
+function krAutoLus() {
+  const d = KR_STATE.ui.drag;
+  if (!d) { _krAutoRaf = null; return; }
+  if (d.gewapend) {
+    const scroll = document.getElementById('kr-scroll');
+    const r = scroll.getBoundingClientRect();
+    const m = krMaten();
+    let dx = 0;
+    if (d.x > r.right - 40) dx = 12;
+    else if (d.x < r.left + m.left + 40) dx = -12;
+    if (dx) {
+      const voor = scroll.scrollLeft;
+      scroll.scrollLeft += dx;
+      d.startX -= (scroll.scrollLeft - voor);
+      krSleepPreview();
+    }
+  }
+  _krAutoRaf = requestAnimationFrame(krAutoLus);
+}
+
+function krSleepEind(e) {
+  const d = KR_STATE.ui.drag;
+  KR_STATE.ui.drag = null;
+  if (_krAutoRaf) { cancelAnimationFrame(_krAutoRaf); _krAutoRaf = null; }
+  if (!d) return;
+
+  const afronden = () => {
+    if (KR_STATE.ui.wachtendeRender) KR_STATE.ui.wachtendeRender = false;
+    render();
+  };
+  // Niet echt gesleept? Dan is het een klik en laten we die door
+  if (!d.gewapend) { if (KR_STATE.ui.wachtendeRender) afronden(); return; }
+
+  // Na een sleep volgt nog een click; die mag het doel niet openen. Alleen
+  // die ene actie negeren, en niet elke klik opslokken — anders eet dit ook
+  // de knop "Ongedaan maken" van de toast op.
+  _krNaSleep = Date.now();
+
+  const g = KR_STATE.data.goals[d.id];
+  if (!g) { afronden(); return; }
+  const anderRij = d.mode === 'verplaats' && d.sgId && d.sgId !== g.subgroupId;
+  if (!d.cols && !anderRij) { afronden(); return; }
+
+  const oud = { startMonth: g.startMonth, endMonth: g.endMonth, subgroupId: g.subgroupId,
+                updatedAt: g.updatedAt || today() };
+  const rec = { updatedAt: today() };
+  if (d.mode === 'aanloop') {
+    rec.startMonth = nrNaarMaand(maandNr(g.startMonth) + d.cols);
+  } else {
+    rec.startMonth = nrNaarMaand(maandNr(g.startMonth) + d.cols);
+    rec.endMonth = nrNaarMaand(maandNr(g.endMonth) + d.cols);
+    if (anderRij) rec.subgroupId = d.sgId;
+  }
+  fbUpdate('koers/goals/' + d.id, rec);
+  showToast('Doel verplaatst', () => fbUpdate('koers/goals/' + d.id, oud));
 }
 
 // ─── Gebieden en subgroepen beheren ─────────────
@@ -1166,6 +1353,9 @@ function render() {
 // gelijktijdige updates één render geven in plaats van drie.
 let _krRaf = null;
 function renderVeilig() {
+  // Slepen wint: hertekenen tijdens een gebaar zou de balk onder je cursor
+  // weghalen. Na het loslaten haalt krSleepEind() de render alsnog op.
+  if (KR_STATE.ui.drag) { KR_STATE.ui.wachtendeRender = true; return; }
   if (_krRaf) return;
   _krRaf = requestAnimationFrame(() => { _krRaf = null; render(); });
 }
@@ -1214,6 +1404,11 @@ function setupEventListeners() {
         break;
       }
       case 'openDoel':
+        // Na een sleep volgt nog één click; die mag het doel niet openen.
+        // De vlag wordt door precies die click opgebruikt, met een venster
+        // eromheen voor het geval er helemaal geen click komt (pointerup
+        // buiten de balk levert er geen).
+        if (_krNaSleep && Date.now() - _krNaSleep < 500) { _krNaSleep = 0; break; }
         krOpenDoel(el.dataset.id); break;
       case 'bewaarDoel':
         krBewaarDoel(); break;
@@ -1340,6 +1535,7 @@ function luisterNaarData() {
     applyTheme();
     render();
     setupEventListeners();
+    krSleepInit();
 
     try {
       if (await seedIndienNodig()) showToast('Indeling aangemaakt');
