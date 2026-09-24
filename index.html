@@ -169,6 +169,26 @@ function render() {
        </div>
        <div class="tile-pijl">${ico('arrowRight', 20)}</div>
      </a>`
+  ).join('') + lokaleTegels();
+}
+
+// Tegels naar apps die lokaal op één Mac draaien (niet in deze repo, niet op GitHub).
+// Iedereen ziet ze; de link werkt alleen op het apparaat waar die app draait.
+// Bewust niet in ARD_APPS: geen pill in de switcher.
+const LOKALE_TEGELS = [
+  { naam: 'LinkedIn', url: 'http://127.0.0.1:7331/', icon: 'map',
+    omschrijving: 'Contentsysteem · werkt alleen op Vincents Mac, als het dashboard draait' },
+];
+function lokaleTegels() {
+  return LOKALE_TEGELS.map(t =>
+    `<a class="tile" href="${t.url}" target="_blank" rel="noopener" title="Opent het dashboard op deze Mac (localhost)">
+       <div class="tile-icon">${ico(t.icon, 26)}</div>
+       <div class="tile-tekst">
+         <div class="tile-naam"><span class="slash">/</span>${esc(t.naam)}</div>
+         <div class="tile-oms">${esc(t.omschrijving)}</div>
+       </div>
+       <div class="tile-pijl">${ico('arrowRight', 20)}</div>
+     </a>`
   ).join('');
 }
 
